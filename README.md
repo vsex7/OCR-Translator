@@ -71,6 +71,7 @@ This application was developed or rather vibe-coded with the support of the foll
 ## Key Features
 
 ### 🚀 NEW in Version 3.8.0
+- **🌏 Chinese Language Support**: Full support for Chinese (Simplified) user interface with dynamic language switching without restart.
 - **✨ Hover Translation Mode**: Translate text on-demand by simply hovering your mouse over a source area.
 - **🖱️ Click-Through Overlays**: Make overlay windows transparent to mouse clicks, allowing interaction with underlying game or application elements.
 - **📋 Context Menu**: Right-click on the translation overlay to quickly **Copy** the text or have it **Read Aloud** using a text-to-speech engine.
