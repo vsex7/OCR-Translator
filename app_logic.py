@@ -153,14 +153,16 @@ class GameChangingTranslator:
         else:
             log_debug("Process-level CPU affinity DISABLED via configuration flag")
 
-        self.source_area = None 
+        self.source_areas = {}
         self.target_area = None 
         self.is_running = False 
         self.threads = [] 
         self.last_image_hash = None 
-        self.source_overlay = None
+        self.source_overlays = {}
         self.target_overlay = None
+        self.target_overlays = {}
         self.translation_text = None
+        self.translation_texts = {}
         self.text_stability_counter = 0 
         self.previous_text = "" 
         self.last_screenshot = None 
@@ -871,8 +873,8 @@ class GameChangingTranslator:
     def browse_marian_models_file(self):
         self.configuration_handler.browse_marian_models_file()
 
-    def update_translation_text(self, text_to_display):
-        self.display_manager.update_translation_text(text_to_display)
+    def update_translation_text(self, text_to_display, hwnd=None):
+        self.display_manager.update_translation_text(text_to_display, hwnd)
 
     def update_debug_display(self, original_img_pil, processed_img_cv, ocr_text_content):
         self.display_manager.update_debug_display(original_img_pil, processed_img_cv, ocr_text_content)
@@ -2149,22 +2151,25 @@ class GameChangingTranslator:
             
             # Always try to capture from source area for real-time preview (independent of translation state)
             screenshot_pil = None
-            if self.source_overlay and self.source_overlay.winfo_exists():
-                try:
-                    area = self.source_overlay.get_geometry()
-                    if area:
-                        x1, y1, x2, y2 = map(int, area)
-                        width, height = x2-x1, y2-y1
-                        if width > 0 and height > 0:
-                            import pyautogui
-                            screenshot_pil = pyautogui.screenshot(region=(x1, y1, width, height))
+            if self.source_overlays:
+                # Use the first available overlay for preview
+                first_overlay = next(iter(self.source_overlays.values()), None)
+                if first_overlay and first_overlay.winfo_exists():
+                    try:
+                        area = first_overlay.get_geometry()
+                        if area:
+                            x1, y1, x2, y2 = map(int, area)
+                            width, height = x2-x1, y2-y1
+                            if width > 0 and height > 0:
+                                import pyautogui
+                                screenshot_pil = pyautogui.screenshot(region=(x1, y1, width, height))
+                            else:
+                                screenshot_pil = None
                         else:
                             screenshot_pil = None
-                    else:
+                    except Exception as e:
+                        log_debug(f"Error capturing for preview: {e}")
                         screenshot_pil = None
-                except Exception as e:
-                    log_debug(f"Error capturing for preview: {e}")
-                    screenshot_pil = None
             
             # Fallback to using last_screenshot only if direct capture failed
             if screenshot_pil is None and hasattr(self, 'last_screenshot') and self.last_screenshot:
@@ -2414,9 +2419,10 @@ class GameChangingTranslator:
             except tk.TclError as e_ctt:
                 log_debug(f"Error clearing translation text on stop: {e_ctt}")
         
-        if self.source_overlay and self.source_overlay.winfo_exists() and self.source_overlay.winfo_viewable():
-            try: self.source_overlay.hide()
-            except tk.TclError: log_debug("Error hiding source overlay on stop (likely closed).")
+        for overlay in self.source_overlays.values():
+            if overlay and overlay.winfo_exists() and overlay.winfo_viewable():
+                try: overlay.hide()
+                except tk.TclError: log_debug("Error hiding source overlay on stop (likely closed).")
         
         if self.target_overlay and self.target_overlay.winfo_exists() and self.target_overlay.winfo_viewable():
             try: self.target_overlay.hide()
@@ -2485,7 +2491,7 @@ class GameChangingTranslator:
 
                 valid_start_flag = True 
                 
-                if not self.source_overlay or not self._widget_exists_safely(self.source_overlay):
+                if not self.source_overlays:
                     messagebox.showerror("Start Error", "Source area overlay missing. Select source area.", parent=self.root)
                     valid_start_flag = False
                 if valid_start_flag and (not self.target_overlay or not self._widget_exists_safely(self.target_overlay)):
@@ -2503,9 +2509,12 @@ class GameChangingTranslator:
                 
                 if valid_start_flag:
                      try:
-                         self.source_area = self.source_overlay.get_geometry()
+                         for hwnd, overlay in self.source_overlays.items():
+                             self.source_areas[hwnd] = overlay.get_geometry()
+                             if not self._validate_area_coords(self.source_areas[hwnd], "source"):
+                                 valid_start_flag = False
+                                 break
                          self.target_area = self.target_overlay.get_geometry()
-                         if not self._validate_area_coords(self.source_area, "source"): valid_start_flag = False
                          if valid_start_flag and not self._validate_area_coords(self.target_area, "target"): valid_start_flag = False
                      except (tk.TclError, AttributeError) as e_gog:
                          messagebox.showerror("Start Error", f"Could not get overlay geometry: {e_gog}", parent=self.root)
@@ -2592,6 +2601,87 @@ class GameChangingTranslator:
             log_debug("Requesting stop translation from worker thread.")
             if self.root.winfo_exists():
                 self.root.after(0, self.toggle_translation)
+
+    def auto_detect_window(self):
+        """auto detect window and set the area of the window as the source area"""
+        try:
+            import win32gui
+            import win32con
+        except ImportError:
+            messagebox.showerror("Error", "PyWin32 not installed. Please install it to use this feature.")
+            return
+
+        windows = []
+        def callback(hwnd, extra):
+            if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
+                windows.append((hwnd, win32gui.GetWindowText(hwnd)))
+
+        win32gui.EnumWindows(callback, None)
+
+        # Filter and prioritize windows
+        priority_keywords = ["Visual Studio Code", "- Google Chrome", "- Microsoft​ Edge", "- Mozilla Firefox"]
+        priority_windows = []
+        other_windows = []
+
+        for hwnd, title in windows:
+            if any(keyword in title for keyword in priority_keywords):
+                priority_windows.append((hwnd, title))
+            else:
+                other_windows.append((hwnd, title))
+
+        sorted_windows = priority_windows + other_windows
+
+        if not sorted_windows:
+            messagebox.showinfo("No Windows Found", "No open windows with titles were found.")
+            return
+
+        # Create a dialog to select a window
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Select up to 3 Windows")
+        dialog.geometry("400x300")
+        listbox = tk.Listbox(dialog, selectmode=tk.MULTIPLE)
+        listbox.pack(fill="both", expand=True)
+
+        for i, (hwnd, title) in enumerate(sorted_windows):
+            if i >= 15:
+                break
+            listbox.insert(tk.END, f"{title}")
+
+        def on_select():
+            try:
+                selected_indices = listbox.curselection()
+                if not selected_indices:
+                    return
+
+                if len(selected_indices) > 3:
+                    messagebox.showwarning("Too Many Windows", "Please select up to 3 windows.")
+                    return
+
+                self.source_overlays.clear()
+                self.source_areas.clear()
+
+                for i in selected_indices:
+                    hwnd, title = sorted_windows[i]
+                    rect = win32gui.GetWindowRect(hwnd)
+                    x1, y1, x2, y2 = rect
+                    source_area = [x1, y1, x2, y2]
+                    self.source_areas[hwnd] = source_area
+                    log_debug(f"Auto-detected source area for '{title}' (hwnd: {hwnd}): {source_area}")
+                    create_source_overlay_om(self, hwnd, source_area)
+
+                    # Also create a corresponding target overlay
+                    # For simplicity, we'll place it below the source window
+                    target_area = [x1, y2, x2, y2 + 100]
+                    create_target_overlay_om(self, hwnd, target_area)
+
+                messagebox.showinfo("Area Set", f"{len(selected_indices)} source area(s) set.")
+            except IndexError:
+                pass
+            finally:
+                dialog.destroy()
+
+        select_button = ttk.Button(dialog, text="Select", command=on_select)
+        select_button.pack(pady=5)
 
     def update_translation_model_names(self):
         """Update translation model names with localized strings from CSV files."""
@@ -3097,27 +3187,44 @@ For more information, see the user manual."""
                 log_debug(f"Error unhooking keyboard shortcuts: {e_uhk}")
 
         log_debug("Destroying overlay windows if they exist...")
-        for overlay_attr_name in ['source_overlay', 'target_overlay']:
-            overlay_widget = getattr(self, overlay_attr_name, None)
-            if overlay_widget:
+        for overlay in self.source_overlays.values():
+            if overlay:
                 try:
-                    # Preserve target overlay position before destroying during shutdown
-                    if overlay_attr_name == 'target_overlay':
-                        from overlay_manager import _preserve_overlay_position
-                        _preserve_overlay_position(self)
-                        log_debug("Preserved target overlay position during app shutdown")
-                    
-                    # Handle tkinter overlays
-                    if hasattr(overlay_widget, 'winfo_exists') and overlay_widget.winfo_exists():
-                        overlay_widget.destroy()
-                    # Handle PySide overlays
-                    elif hasattr(overlay_widget, 'close'):
-                        overlay_widget.close()
-                        
+                    if hasattr(overlay, 'winfo_exists') and overlay.winfo_exists():
+                        overlay.destroy()
+                    elif hasattr(overlay, 'close'):
+                        overlay.close()
                 except Exception as e_dow:
-                    log_debug(f"Error destroying {overlay_attr_name}: {e_dow}")
-            setattr(self, overlay_attr_name, None)
+                    log_debug(f"Error destroying source overlay: {e_dow}")
+        self.source_overlays.clear()
+
+        for overlay in self.target_overlays.values():
+            if overlay:
+                try:
+                    if hasattr(overlay, 'winfo_exists') and overlay.winfo_exists():
+                        overlay.destroy()
+                    elif hasattr(overlay, 'close'):
+                        overlay.close()
+                except Exception as e_dow:
+                    log_debug(f"Error destroying target overlay: {e_dow}")
+        self.target_overlays.clear()
+
+        if self.target_overlay:
+            try:
+                from overlay_manager import _preserve_overlay_position
+                _preserve_overlay_position(self)
+                log_debug("Preserved target overlay position during app shutdown")
+
+                if hasattr(self.target_overlay, 'winfo_exists') and self.target_overlay.winfo_exists():
+                    self.target_overlay.destroy()
+                elif hasattr(self.target_overlay, 'close'):
+                    self.target_overlay.close()
+            except Exception as e_dow:
+                log_debug(f"Error destroying target_overlay: {e_dow}")
+
+        self.target_overlay = None
         self.translation_text = None
+        self.translation_texts.clear()
 
         log_debug("Destroying root window...")
         try:
