@@ -184,7 +184,7 @@ This application was developed or rather vibe-coded with the support of the foll
   - MarianMT (offline neural machine translation)
   - DeepL API
   - Google Translate API
-- **Multilingual User Interface**: Full support for English and Polish interface languages
+- **Multilingual User Interface**: Full support for English, Polish, and Chinese interface languages
 - **Floating Overlays**: Translucent, movable windows that stay on top of other applications
 - **Customizable Appearance**: Adjust colours, fonts, and transparency
 - **Image Preprocessing**: Various modes to improve OCR accuracy
