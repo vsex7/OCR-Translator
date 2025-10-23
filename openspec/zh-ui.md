@@ -1,0 +1,274 @@
+# Chinese UI Strings
+
+This file contains all the Chinese strings used in the application's user interface.
+
+| Key | Chinese Value |
+| --- | --- |
+| main_tab_title | 主页 |
+| select_source_btn | 选择源区域 (OCR) |
+| select_target_btn | 选择目标区域 (翻译) |
+| start_btn | 开始 |
+| stop_btn | 停止 |
+| hide_source_btn | 隐藏/显示源窗口 |
+| hide_target_btn | 隐藏/显示目标窗口 |
+| clear_cache_btn | 清除翻译缓存 |
+| clear_debug_log_btn | 清除调试日志 |
+| toggle_debug_log_disable_btn | 禁用调试日志 |
+| toggle_debug_log_enable_btn | 启用调试日志 |
+| gui_language_label | 界面语言 |
+| keyboard_shortcuts_title | 键盘快捷键 |
+| status_ready | 状态: 就绪 |
+| status_ready_hotkey | 状态: 就绪 (按 ~ 开始/停止) |
+| shortcut_start_stop | 开始/停止翻译 |
+| shortcut_toggle_source | 切换源窗口可见性 |
+| shortcut_toggle_target | 切换目标窗口可见性 |
+| shortcut_save_settings | 保存设置 |
+| shortcut_clear_cache | 清除缓存 |
+| shortcut_clear_log | 清除调试日志 |
+| status_running | 运行中 (按 ~ 停止) |
+| status_stopped | 已停止 (按 ~ 开始) |
+| settings_tab_title | 设置 |
+| translation_model_label | 翻译模型: |
+| translation_model_marianmt_offline | MarianMT (离线免费) |
+| ocr_model_label | OCR 模型: |
+| ocr_model_tesseract | Tesseract (离线) |
+| ocr_model_gemini | Gemini API (在线) |
+| source_lang_label | 源语言: |
+| target_lang_label | 目标语言: |
+| marian_model_label | MarianMT 模型: |
+| google_api_key_label | Google 翻译 API 密钥: |
+| deepl_api_key_label | DeepL API 密钥: |
+| gemini_api_key_label | Gemini API 密钥: |
+| deepl_model_type_label | 质量: |
+| gemini_context_window_label | 上下文窗口: |
+| gemini_context_window_0 | 0 (禁用) |
+| gemini_context_window_1 | 1 (最后一句字幕) |
+| gemini_context_window_2 | 2 (两句字幕) |
+| gemini_context_window_3 | 3 (三句字幕) |
+| gemini_context_window_4 | 4 (四句字幕) |
+| gemini_context_window_5 | 5 (五句字幕) |
+| openai_api_key_label | OpenAI API 密钥: |
+| openai_context_window_label | 上下文窗口: |
+| openai_context_window_0 | 0 (禁用) |
+| openai_context_window_1 | 1 (最后一句字幕) |
+| openai_context_window_2 | 2 (两句字幕) |
+| openai_context_window_3 | 3 (三句字幕) |
+| openai_context_window_4 | 4 (四句字幕) |
+| openai_context_window_5 | 5 (五句字幕) |
+| deepl_classic_model | 经典 |
+| deepl_nextgen_model | 下一代 |
+| deepl_context_window_label | 上下文窗口: |
+| deepl_context_window_0 | 0 (禁用) |
+| deepl_context_window_1 | 1 (最后一句字幕) |
+| deepl_context_window_2 | 2 (两句字幕) |
+| deepl_context_window_3 | 3 (三句字幕) |
+| models_file_label | MarianMT 模型列表: |
+| beam_size_label | 翻译波束大小 (MarianMT): |
+| tesseract_path_label | Tesseract 路径: |
+| scan_interval_label | 扫描间隔 (毫秒): |
+| clear_timeout_label | 清除翻译超时 (秒): |
+| stability_threshold_label | 文本稳定性阈值: |
+| confidence_threshold_label | OCR 置信度阈值: |
+| preprocessing_mode_label | 图像预处理模式: |
+| ocr_debugging_label | OCR 调试: |
+| show_debug_checkbox | 显示调试图像/文本 |
+| preview_btn | 预览 |
+| adaptive_block_size_label | 块大小 (3-101, 奇数): |
+| adaptive_c_label | C 值 (-75 到 75): |
+| remove_trailing_label | 移除尾随无效字符: |
+| remove_trailing_checkbox | 移除最后一个标点符号后的文本 |
+| source_color_label | 源区域颜色: |
+| target_color_label | 目标区域颜色: |
+| target_text_color_label | 目标文本颜色: |
+| font_size_label | 目标窗口字体大小: |
+| font_type_label | 目标窗口字体类型: |
+| opacity_label | 不透明度: |
+| opacity_background_label | 背景: |
+| opacity_text_label | 文本: |
+| file_cache_frame_title | 文件缓存选项 |
+| file_cache_description | 文件缓存将翻译保存到磁盘以减少 API 成本并提高性能。 |
+| google_cache_checkbox | 启用 Google 翻译文件缓存 (保存到磁盘, 减少 API 调用) |
+| deepl_cache_checkbox | 启用 DeepL 文件缓存 (保存到磁盘, 减少 API 调用) |
+| gemini_file_cache_checkbox | 启用 Gemini 文件缓存 (保存到磁盘, 减少 API 调用) |
+| openai_file_cache_checkbox | 启用 OpenAI 文件缓存 (保存到磁盘, 减少 API 调用) |
+| cache_files_label | 缓存文件: |
+| clear_caches_btn | 清除文件缓存 |
+| save_settings_btn | 立即保存设置 |
+| browse_btn | 浏览 |
+| show_btn | 显示 |
+| hide_btn | 隐藏 |
+| choose_color_btn | 选择颜色 |
+| debug_tab_title | 调试 |
+| original_image_label | 原始图像 |
+| processed_image_label | 处理后图像 |
+| ocr_results_label | Tesseract OCR 结果 |
+| ocr_results_placeholder | 翻译运行时, 如果选择 Tesseract 作为 OCR 模型, OCR 结果将显示在此处。 |
+| app_log_label | 应用程序日志 |
+| save_debug_images_btn | 保存 OCR 图像 |
+| refresh_log_btn | 刷新日志 |
+| preprocessing_none | 无 |
+| preprocessing_binary | 二进制 |
+| preprocessing_binary_inv | 二进制反转 |
+| preprocessing_adaptive | 自适应 |
+| about_tab_title | 关于 |
+| settings_saved | 状态: 设置已保存 |
+| no_image_captured | 尚未捕获图像 |
+| no_image_processed | 尚未处理图像 |
+| marian_beam_explanation | 更高的波束值 = 更好但更慢的翻译 |
+| marian_quality_note | 注意: MarianMT 提供高质量的翻译 |
+| marian_quality_vary | 对于许多语言对。质量可能因语言而异。 |
+| marian_download_note | 模型在首次使用时下载 (需要互联网)。 |
+| marian_unavailable_line1 | MarianMT 不可用。要启用, 请安装: |
+| marian_unavailable_line2 | pip install transformers torch sentencepiece |
+| browse_marian_models_title | 选择 MarianMT 模型 CSV 文件 |
+| browse_tesseract_title | 选择 tesseract.exe |
+| choose_source_color_title | 选择源颜色 |
+| choose_target_color_title | 选择目标颜色 |
+| choose_target_text_color_title | 选择目标文本颜色 |
+| dialog_area_selected_title | 区域已选择 |
+| dialog_source_area_set_message | 源区域设置为: |
+| dialog_target_area_set_message | 目标显示区域设置为: |
+| dialog_debug_images_saved_title | OCR 图像已保存 |
+| dialog_debug_images_saved_message | 图像保存到 '{0}'。 |
+| dialog_debug_image_saved_title | OCR 图像已保存 |
+| dialog_debug_image_saved_message | 原始图像保存到 '{0}'。没有处理过的图像。 |
+| ocr_preview_title | OCR 预览 |
+| processed_image_preview | 处理后图像 (1:1 比例) |
+| recognized_text_preview | 识别文本 |
+| refresh_preview | 刷新预览 |
+| close_btn | 关闭 |
+| no_text_recognized | 未识别到文本 |
+| no_image_for_ocr | 没有可用于 OCR 的图像 |
+| gemini_total_words_label | 总字数 |
+| gemini_total_cost_label | 总成本 |
+| gemini_enable_api_log_checkbox | 启用 API 日志 |
+| gemini_reset_log_button | 重置 |
+| gemini_refresh_stats_button | 刷新 |
+| deepl_usage_label | 每月免费使用量 |
+| deepl_usage_loading | 加载中... |
+| api_usage_tab_title | API 使用情况 |
+| api_usage_section_gemini_ocr | 📊 Gemini OCR 统计 |
+| api_usage_section_gemini_translation | 🔄 Gemini 翻译统计 |
+| api_usage_section_gemini_combined | 💰 Gemini 综合统计 |
+| api_usage_section_openai_ocr | 📊 OpenAI OCR 统计 |
+| api_usage_section_openai_translation | 🔄 OpenAI 翻译统计 |
+| api_usage_section_openai_combined | 💰 OpenAI 综合统计 |
+| api_usage_section_deepl | 📈 DeepL 使用情况跟踪器 |
+| api_usage_total_ocr_calls | 总 OCR 调用次数: |
+| api_usage_median_duration_ocr | 中位持续时间: |
+| api_usage_avg_cost_per_call | 每次调用平均成本: |
+| api_usage_avg_cost_per_minute | 每分钟平均成本: |
+| api_usage_avg_cost_per_hour | 每小时平均成本: |
+| api_usage_total_ocr_cost | 总 OCR 成本: |
+| api_usage_total_translation_calls | 总翻译调用次数: |
+| api_usage_total_words_translated | 翻译总字数: |
+| api_usage_median_duration_translation | 中位持续时间: |
+| api_usage_words_per_minute | 平均每分钟字数: |
+| api_usage_avg_cost_per_word | 每个单词的平均成本: |
+| api_usage_total_translation_cost | 总翻译成本: |
+| api_usage_combined_cost_per_minute | 每分钟综合成本: |
+| api_usage_combined_cost_per_hour | 每小时综合成本: |
+| api_usage_total_api_cost | 总 API 成本: |
+| api_usage_refresh_btn | 刷新统计 |
+| api_usage_export_csv_btn | 导出为 CSV |
+| api_usage_export_text_btn | 导出为文本 |
+| api_usage_copy_btn | 复制 |
+| api_usage_no_data | 无可用数据 |
+| api_usage_info_note | "ℹ️ 注意: 这些统计数据基于简短日志文件 (Short_Log)。如果删除或清除这些文件, 统计数据将被重置。预估成本跟踪仅供参考。您全权负责监控各个提供商 API 的使用和成本。" |
+| check_for_updates_btn | 检查更新 |
+| check_for_updates_on_startup | 启动时检查更新 |
+| check_updates_title | 检查更新 |
+| check_updates_msg | 正在检查更新... |
+| update_available_title | 有可用更新 |
+| update_available_msg_start | 新版本 {0} 可用! |
+| update_available_current_version | 当前版本: {0} |
+| update_available_new_version | 新版本: {0} |
+| update_available_file_size | 文件大小: {0} |
+| update_available_release_notes | 发行说明: |
+| update_available_question | 您想下载并安装更新吗? |
+| no_updates_title | 无更新 |
+| no_updates_msg | 您使用的是最新版本! |
+| update_error_title | 更新错误 |
+| update_error_msg | 无法检查更新: |
+| download_update_title | 下载更新 |
+| download_update_msg | 正在下载更新... |
+| download_progress_format | {0} MB / {1} MB ({2}%) |
+| download_error_title | 下载错误 |
+| download_error_msg | 下载更新失败。请稍后再试。 |
+| download_error_detail | 下载更新时出错: |
+| apply_update_title | 应用更新 |
+| apply_update_msg | 更新下载成功! |
+| apply_update_detail | 应用程序将关闭并以新版本自动重启。 |
+| apply_update_continue | 单击“确定”继续。 |
+| applying_update_title | 正在应用更新 |
+| applying_update_msg | 正在应用更新... |
+| applying_update_restart | 应用程序将自动重启。 |
+| update_apply_error_title | 更新应用错误 |
+| update_apply_error_msg | 应用更新失败。 |
+| update_apply_error_detail | 请重试或重新启动应用程序以应用更新。 |
+| update_apply_error_exception | 应用更新时发生错误: |
+| update_apply_error_restart | 重新启动应用程序以应用更新。 |
+| stats_copied_title | 已复制 |
+| stats_copied_msg | 统计信息已复制到剪贴板。 |
+| stats_copy_error | 复制到剪贴板时出错。 |
+| deepl_usage_unavailable | 无法检索使用数据 |
+| deepl_usage_error | 检索使用数据时出错 |
+| export_success_title | 导出成功 |
+| export_success_msg | 统计信息已导出到: |
+| export_failed_title | 导出失败 |
+| export_csv_failed_msg | 将统计信息导出到 CSV 失败。 |
+| export_text_failed_msg | 将统计信息导出到文本失败。 |
+| export_error_title | 导出错误 |
+| export_error_msg | 导出统计信息时出错: |
+| gemini_reset_success_title | 成功 |
+| gemini_reset_success_msg | Gemini API 日志已重置。 |
+| gemini_reset_warning_title | 警告 |
+| gemini_reset_warning_msg | Gemini API 日志文件不存在。 |
+| gemini_reset_error_title | 错误 |
+| gemini_reset_error_msg | 无法访问 Gemini 日志文件。 |
+| gemini_reset_error_failed | 重置 Gemini API 日志失败: |
+| stats_clipboard_header | Game-Changing Translator - API 使用统计 |
+| stats_section_ocr_header | 📊 Gemini OCR 统计 |
+| stats_section_translation_header | 🔄 Gemini 翻译统计 |
+| stats_section_combined_header | 💰 综合 API 统计 |
+| stats_section_deepl_header | 📈 DeepL 使用情况监控 |
+| stats_deepl_free_limit | 每月免费限额: |
+| stats_not_available | 不适用 |
+| stats_cost_per_min_suffix | /分钟 |
+| stats_cost_per_hr_suffix | /小时 |
+| stats_duration_suffix | 秒 |
+| currency_usd | 美元 |
+| mb_progress_of | MB / |
+| mb_progress_format | MB ({0}%) |
+| export_csv_dialog_title | 将统计信息导出到 CSV |
+| export_text_dialog_title | 将统计信息导出为文本 |
+| file_type_csv | CSV 文件 |
+| file_type_text | 文本文件 |
+| file_type_all | 所有文件 |
+| csv_header_provider | 提供商 |
+| csv_header_type | 类型 |
+| csv_header_metric | 指标 |
+| csv_header_value | 值 |
+| csv_metric_free_monthly_limit | 每月免费限额 |
+| stats_text_total_ocr_calls | 总 OCR 调用次数 |
+| stats_text_median_duration | 中位持续时间 |
+| stats_text_avg_cost_per_call | 每次调用平均成本 |
+| stats_text_avg_cost_per_minute | 每分钟平均成本 |
+| stats_text_avg_cost_per_hour | 每小时平均成本 |
+| stats_text_total_ocr_cost | 总 OCR 成本 |
+| stats_text_total_trans_calls | 总翻译调用次数 |
+| stats_text_total_words | 翻译总字数 |
+| stats_text_words_per_minute | 平均每分钟字数 |
+| stats_text_avg_cost_per_word | 每个单词的平均成本 |
+| stats_text_total_trans_cost | 总翻译成本 |
+| stats_text_total_api_cost | 总 API 成本 |
+| stats_text_combined_cost_per_minute | 每分钟综合成本 |
+| stats_text_combined_cost_per_hour | 每小时综合成本 |
+| stats_text_ocr_header_gemini | 📊 Gemini OCR 统计 |
+| stats_text_trans_header_gemini | 🔄 Gemini 翻译统计 |
+| stats_text_combined_header_gemini | 💰 Gemini 综合统计 |
+| stats_text_ocr_header_openai | 📊 OpenAI OCR 统计 |
+| stats_text_trans_header_openai | 🔄 OpenAI 翻译统计 |
+| stats_text_combined_header_openai | 💰 OpenAI 综合统计 |
+| stats_text_deepl_header | 📈 DeepL 使用情况监控 |
+| stats_report_generated | 报告生成时间: |

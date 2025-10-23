@@ -14,7 +14,7 @@ def get_system_fonts():
         all_fonts.sort()
         
         # Preferred fonts to show at the top (if available)
-        preferred_fonts = ['Arial', 'Times New Roman', 'Calibri', 'Cambria']
+        preferred_fonts = ['SimHei', 'Arial', 'Times New Roman', 'Calibri', 'Cambria']
         
         # Build final list with preferred fonts first
         final_fonts = []

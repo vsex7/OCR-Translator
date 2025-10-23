@@ -464,7 +464,7 @@ class GameChangingTranslator:
         self.target_text_opacity_var.trace_add("write", self.settings_changed_callback)
         self.num_beams_var.trace_add("write", self.settings_changed_callback)
         self.marian_model_var.trace_add("write", self.settings_changed_callback) 
-        self.gui_language_var.trace_add("write", self.settings_changed_callback)
+        self.gui_language_var.trace_add("write", self.on_language_change)
         self.ocr_model_var.trace_add("write", self.settings_changed_callback)
         self.ocr_model_var.trace_add("write", self.on_ocr_model_change)
 
@@ -822,6 +822,32 @@ class GameChangingTranslator:
             log_debug(f"OCR model changed to: {self.ocr_model_var.get()}")
         except Exception as e:
             log_debug(f"Error in OCR model change callback: {e}")
+
+    def on_language_change(self, *args):
+        """Called when GUI language selection changes."""
+        if not self._fully_initialized or self._ui_update_in_progress:
+            return
+
+        try:
+            # Get selected language display name from Tkinter variable
+            selected_language_display = self.gui_language_var.get()
+
+            # Get language code from display name
+            lang_code = self.ui_lang.get_language_code_from_name(selected_language_display)
+
+            # Load the new language if it's different from the current one
+            if lang_code and lang_code != self.ui_lang.current_lang:
+                log_debug(f"GUI language changed to: {selected_language_display} (code: {lang_code})")
+                self.ui_lang.load_language(lang_code)
+
+                # Update the entire UI with the new language
+                self.update_ui_language()
+
+            # Save settings after language change
+            self.save_settings()
+
+        except Exception as e:
+            log_debug(f"Error in language change callback: {e}")
 
     def save_settings(self):
         if self._fully_initialized:
