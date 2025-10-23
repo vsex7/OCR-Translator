@@ -299,6 +299,7 @@ def create_target_overlay_om(app, skip_preservation=False):
             pyside_manager = get_pyside_manager()
 
             app.target_overlay = pyside_manager.create_overlay(
+                app,
                 app.target_area,
                 target_color,
                 title="Translation",

@@ -68,7 +68,9 @@ DEFAULT_CONFIG_SETTINGS = {
     'gemini_ocr_model': 'Gemini 2.5 Flash-Lite',
     'keep_linebreaks': 'False',
     # Auto-update settings
-    'check_for_updates_on_startup': 'yes'
+    'check_for_updates_on_startup': 'yes',
+    # Overlay display mode
+    'overlay_display_mode': 'target_only'
 }
 
 

@@ -347,6 +347,7 @@ class GameChangingTranslator:
         self.target_font_type_var = tk.StringVar(value=self.config['Settings'].get('target_font_type', 'Arial'))
         self.target_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_opacity', '0.15')))
         self.target_text_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_text_opacity', '1.0')))
+        self.overlay_display_mode_var = tk.StringVar(value=self.config['Settings'].get('overlay_display_mode', 'target_only'))
 
         # Initialize OCR model display variable here to ensure it persists across UI rebuilds
         self.ocr_model_display_var = tk.StringVar()
@@ -462,6 +463,7 @@ class GameChangingTranslator:
         self.target_font_type_var.trace_add("write", self.settings_changed_callback)
         self.target_opacity_var.trace_add("write", self.settings_changed_callback)
         self.target_text_opacity_var.trace_add("write", self.settings_changed_callback)
+        self.overlay_display_mode_var.trace_add("write", self.settings_changed_callback)
         self.num_beams_var.trace_add("write", self.settings_changed_callback)
         self.marian_model_var.trace_add("write", self.settings_changed_callback) 
         self.gui_language_var.trace_add("write", self.settings_changed_callback)
