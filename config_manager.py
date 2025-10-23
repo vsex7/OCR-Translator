@@ -70,7 +70,9 @@ DEFAULT_CONFIG_SETTINGS = {
     # Auto-update settings
     'check_for_updates_on_startup': 'yes',
     # Overlay display mode
-    'overlay_display_mode': 'target_only'
+    'overlay_display_mode': 'target_only',
+    # Input hook feature
+    'enable_input_hook': 'False'
 }
 
 

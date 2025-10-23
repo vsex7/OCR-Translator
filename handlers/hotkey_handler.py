@@ -25,6 +25,7 @@ class HotkeyHandler:
                 keyboard.add_hotkey('alt+s', self.save_settings_hotkey, suppress=True)
                 keyboard.add_hotkey('alt+c', self.clear_cache_hotkey, suppress=True)
                 keyboard.add_hotkey('alt+l', self.clear_debug_log_hotkey, suppress=True)
+                keyboard.add_hotkey('ctrl+z', self.undo_translation_hotkey, suppress=True)
                 log_debug("Keyboard shortcuts registered.")
             except Exception as e_hk: # Use a distinct variable name
                 log_debug(f"Error setting up keyboard shortcuts: {e_hk}")
@@ -78,3 +79,11 @@ class HotkeyHandler:
                 self.app.root.after(0, self.app.clear_debug_log)
         except Exception as e:
             log_debug(f"Error in clear_debug_log_hotkey: {e}")
+
+    def undo_translation_hotkey(self):
+        """Hotkey callback for undoing the last input field translation."""
+        try:
+            if self.app.root.winfo_exists() and self.app.input_hook_manager.is_running:
+                self.app.root.after(0, self.app.input_hook_manager.undo_last_translation)
+        except Exception as e:
+            log_debug(f"Error in undo_translation_hotkey: {e}")

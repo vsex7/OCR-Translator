@@ -1251,6 +1251,11 @@ def create_settings_tab(app):
     ttk.Radiobutton(display_mode_frame, text=app.ui_lang.get_label("display_mode_source_target", "Source + Target"), variable=app.overlay_display_mode_var, value="source_target").pack(side=tk.LEFT, padx=(0, 10))
     ttk.Radiobutton(display_mode_frame, text=app.ui_lang.get_label("display_mode_overlay", "Overlay"), variable=app.overlay_display_mode_var, value="overlay").pack(side=tk.LEFT, padx=(0, 10))
     current_row += 1
+
+    # Input Hook Feature
+    ttk.Label(frame, text=app.ui_lang.get_label("enable_input_hook_label", "Input Hook:")).grid(row=current_row, column=0, padx=5, pady=5, sticky="w")
+    ttk.Checkbutton(frame, text=app.ui_lang.get_label("enable_input_hook_checkbox", "Enable input field translation"), variable=app.enable_input_hook_var).grid(row=current_row, column=1, padx=5, pady=5, sticky="w")
+    current_row += 1
     
     file_cache_frame_outer = ttk.LabelFrame(frame, text=app.ui_lang.get_label("file_cache_frame_title")) 
     file_cache_frame_outer.grid(row=current_row, column=0, columnspan=3, padx=5, pady=5, sticky="ew")

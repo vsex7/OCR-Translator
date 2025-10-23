@@ -47,6 +47,7 @@ from handlers import (
 )
 from handlers.gemini_models_manager import GeminiModelsManager
 from handlers.openai_models_manager import OpenAIModelsManager
+from input_hook_manager import InputHookManager
 
 KEYBOARD_AVAILABLE = False
 try:
@@ -348,6 +349,7 @@ class GameChangingTranslator:
         self.target_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_opacity', '0.15')))
         self.target_text_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_text_opacity', '1.0')))
         self.overlay_display_mode_var = tk.StringVar(value=self.config['Settings'].get('overlay_display_mode', 'target_only'))
+        self.enable_input_hook_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'enable_input_hook', fallback=False))
 
         # Initialize OCR model display variable here to ensure it persists across UI rebuilds
         self.ocr_model_display_var = tk.StringVar()
@@ -376,6 +378,7 @@ class GameChangingTranslator:
         self.ocr_model_display_var.set(initial_ocr_display_name)
         
         # Initialize Handlers
+        self.input_hook_manager = InputHookManager(self)
         # self.cache_manager = CacheManager(self)
         self.configuration_handler = ConfigurationHandler(self)
         self.display_manager = DisplayManager(self)
@@ -464,6 +467,7 @@ class GameChangingTranslator:
         self.target_opacity_var.trace_add("write", self.settings_changed_callback)
         self.target_text_opacity_var.trace_add("write", self.settings_changed_callback)
         self.overlay_display_mode_var.trace_add("write", self.settings_changed_callback)
+        self.enable_input_hook_var.trace_add("write", self.toggle_input_hook)
         self.num_beams_var.trace_add("write", self.settings_changed_callback)
         self.marian_model_var.trace_add("write", self.settings_changed_callback) 
         self.gui_language_var.trace_add("write", self.settings_changed_callback)
@@ -683,6 +687,9 @@ class GameChangingTranslator:
         # Refresh API statistics for the new API Usage tab
         self.root.after_idle(lambda: self._delayed_api_stats_refresh())
 
+        if self.enable_input_hook_var.get():
+            self.input_hook_manager.start()
+
     def _delayed_api_stats_refresh(self):
         """Delayed API statistics refresh to ensure GUI is fully ready."""
         try:
@@ -824,6 +831,15 @@ class GameChangingTranslator:
             log_debug(f"OCR model changed to: {self.ocr_model_var.get()}")
         except Exception as e:
             log_debug(f"Error in OCR model change callback: {e}")
+
+    def toggle_input_hook(self, *args):
+        """Start or stop the InputHookManager based on the checkbox."""
+        if self._fully_initialized:
+            if self.enable_input_hook_var.get():
+                self.input_hook_manager.start()
+            else:
+                self.input_hook_manager.stop()
+            self.save_settings()
 
     def save_settings(self):
         if self._fully_initialized:
@@ -3042,6 +3058,9 @@ For more information, see the user manual."""
             self.toggle_translation()
         else:
              log_debug("Process was not running at close time.")
+
+        if self.input_hook_manager.is_running:
+            self.input_hook_manager.stop()
 
         # # Force end any remaining sessions when application closes
         # if hasattr(self, 'translation_handler'):
