@@ -2946,7 +2946,9 @@ For more information, see the user manual."""
                 elif selected_tab_index == 2 and hasattr(self, 'refresh_api_statistics'):
                     # API Usage tab - refresh statistics when accessed
                     self.root.after(100, self.refresh_api_statistics)
-            
+
+            # Unbind the old handler first to prevent duplication
+            self.tab_control.unbind("<<NotebookTabChanged>>")
             self.tab_control.bind("<<NotebookTabChanged>>", on_tab_changed)
             
             # Set back to the corresponding tab index that was selected before
