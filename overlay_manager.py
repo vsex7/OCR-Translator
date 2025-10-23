@@ -314,8 +314,15 @@ def create_target_overlay_om(app, hwnd=None, area=None, skip_preservation=False)
             log_debug("OverlayManager: PySide6 available, attempting to create PySide overlay")
             pyside_manager = get_pyside_manager()
 
-            target_overlay = pyside_manager.create_overlay(
-                area,
+<<<<<<< HEAD
+            app.target_overlay = pyside_manager.create_overlay(
+                app,
+                app.target_area,
+=======
+            app.target_overlay = pyside_manager.create_overlay(
+                app,
+                app.target_area,
+>>>>>>> origin/feat-overlay-display-modes
                 target_color,
                 title="Translation",
                 top_bar_height=top_bar_height,

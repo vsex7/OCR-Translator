@@ -334,7 +334,7 @@ def run_translation_thread(app):
                 inactive_duration = now - thread_local_last_translation_display_time
                 if app.clear_translation_timeout > 0 and inactive_duration > app.clear_translation_timeout:
                     if not app.previous_text or app.previous_text == "":
-                        app.update_translation_text("")
+                        app.update_translation_text("", "")
                         log_debug(f"WT: Cleared translation after {inactive_duration:.1f}s of inactivity with no source text (timeout: {app.clear_translation_timeout}s)")
                     else:
                         log_debug(f"WT: Not clearing translation despite {inactive_duration:.1f}s inactivity because source area still has text")
@@ -549,15 +549,24 @@ def process_translation_response(app, translation_result, translation_sequence, 
         
         if isinstance(translation_result, str) and any(translation_result.startswith(p) for p in error_prefixes):
             log_debug(f"Translation error in sequence {translation_sequence}: {translation_result}")
-            app.update_translation_text(f"Translation Error:\n{translation_result}", hwnd)
+<<<<<<< HEAD
+            app.update_translation_text(f"Translation Error:\n{translation_result}", original_text)
+=======
+            app.update_translation_text(f"Translation Error:\n{translation_result}", original_text)
+>>>>>>> origin/feat-overlay-display-modes
             app.last_displayed_translation_sequence = translation_sequence
             app.last_successful_translation_time = time.monotonic()
             return
         
         if isinstance(translation_result, str) and translation_result.strip():
             final_processed_translation = post_process_translation_text(translation_result)
-            app.update_translation_text(final_processed_translation, hwnd)
-            log_debug(f"Translation {translation_sequence} displayed for hwnd {hwnd}: '{final_processed_translation}' (from OCR batch {ocr_sequence_number})")
+<<<<<<< HEAD
+            app.update_translation_text(final_processed_translation, original_text)
+            log_debug(f"Translation {translation_sequence} displayed: '{final_processed_translation}' (from OCR batch {ocr_sequence_number})")
+=======
+            app.update_translation_text(final_processed_translation, original_text)
+            log_debug(f"Translation {translation_sequence} displayed: '{final_processed_translation}' (from OCR batch {ocr_sequence_number})")
+>>>>>>> origin/feat-overlay-display-modes
             app.last_displayed_translation_sequence = translation_sequence
             app.last_successful_translation_time = time.monotonic()
         else:

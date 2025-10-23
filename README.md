@@ -190,6 +190,8 @@ This application was developed or rather vibe-coded with the support of the foll
 - **Image Preprocessing**: Various modes to improve OCR accuracy
 - **Hotkey Support**: Control the application without switching windows
 - **Translation Caching**: Reduce API calls and improve performance
+- **Overlay Display Modes**: Choose how translations are displayed. [Learn more](overlay-modes.md)
+- **Input Hook Translation**: Translate text directly in any input field. [Learn more](input-hook-translation.md)
 
 ## Ready-to-Use Compiled Version
 

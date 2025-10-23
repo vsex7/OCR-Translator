@@ -34,12 +34,20 @@ class DisplayManager:
         self.current_logical_text = ""
         self.current_language_code = None
     
-    def update_translation_text(self, text_to_display, hwnd=None):
+<<<<<<< HEAD
+    def update_translation_text(self, text_to_display, source_text=""):
+=======
+    def update_translation_text(self, text_to_display, source_text=""):
+>>>>>>> origin/feat-overlay-display-modes
         """Updates the translation text overlay with new content
         
         Args:
             text_to_display: Text content to display in the overlay
-            hwnd: The window handle of the source window, to identify the correct target overlay.
+<<<<<<< HEAD
+            source_text: The original source text
+=======
+            source_text: The original source text
+>>>>>>> origin/feat-overlay-display-modes
         """
         # Check if the target overlay and text widget references are valid
         if hwnd is None:
@@ -53,7 +61,11 @@ class DisplayManager:
                 return
             
         # Schedule the actual update via the main thread's event loop
-        self.app.root.after(0, self._update_translation_text_on_main_thread, text_to_display, hwnd)
+<<<<<<< HEAD
+        self.app.root.after(0, self._update_translation_text_on_main_thread, text_to_display, source_text)
+=======
+        self.app.root.after(0, self._update_translation_text_on_main_thread, text_to_display, source_text)
+>>>>>>> origin/feat-overlay-display-modes
 
     def manually_wrap_and_process_rtl(self, widget, logical_text, language_code, retry_count=0):
         """
@@ -229,12 +241,20 @@ class DisplayManager:
                     retry_count=0  # Reset retry count for resize events
                 )
 
-    def _update_translation_text_on_main_thread(self, text_content_main_thread, hwnd=None):
+<<<<<<< HEAD
+    def _update_translation_text_on_main_thread(self, text_content_main_thread, source_text):
+=======
+    def _update_translation_text_on_main_thread(self, text_content_main_thread, source_text):
+>>>>>>> origin/feat-overlay-display-modes
         """Updates the translation text widget on the main thread with proper BiDi support
         
         Args:
             text_content_main_thread: Text content to display
-            hwnd: The window handle of the source window, to identify the correct target overlay.
+<<<<<<< HEAD
+            source_text: The original source text
+=======
+            source_text: The original source text
+>>>>>>> origin/feat-overlay-display-modes
         """
         target_overlay = self.app.target_overlays.get(hwnd) if hwnd else self.app.target_overlay
         translation_text = self.app.translation_texts.get(hwnd) if hwnd else self.app.translation_text
@@ -274,8 +294,15 @@ class DisplayManager:
                 font_type = self.app.target_font_type_var.get()
                 bg_color = self.app.target_colour_var.get()
                 
+<<<<<<< HEAD
                 translation_text.set_rtl_text(
-                    new_text_to_display, 
+                    new_text_to_display,
+                    source_text,
+=======
+                self.app.translation_text.set_rtl_text(
+                    new_text_to_display,
+                    source_text,
+>>>>>>> origin/feat-overlay-display-modes
                     target_lang_code, 
                     bg_color, 
                     text_color, 

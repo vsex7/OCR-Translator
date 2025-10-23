@@ -95,7 +95,7 @@ if PYSIDE6_AVAILABLE:
                 }
             """)
 
-        def set_rtl_text(self, text: str, language_code: str = None, bg_color: str = "#2c3e50", text_color: str = "#ecf0f1", font_size: int = 14):
+        def set_rtl_text(self, text: str, source_text: str, language_code: str = None, bg_color: str = "#2c3e50", text_color: str = "#ecf0f1", font_size: int = 14):
             """Set text content while respecting RTL/LTR and applying inline HTML."""
             # Store current state for color updates
             self._current_text = text
@@ -103,6 +103,8 @@ if PYSIDE6_AVAILABLE:
             self._bg_color = bg_color
             # self._fg_color = text_color
             
+            display_mode = self.parent().parent().overlay_display_mode_var.get()
+
             # Normalize whitespace WHILE PRESERVING intentional line breaks (SURGICAL FIX)
             processed = text.replace('\r\n', '\n').replace('\r', '\n')
             # Split by lines, clean whitespace within each line, then rejoin with newlines
@@ -131,6 +133,23 @@ if PYSIDE6_AVAILABLE:
             # CRITICAL FIX: Convert newlines to HTML line breaks for proper dialog formatting
             # HTML ignores \n characters, so we need to convert them to <br> tags
             html_processed = processed.replace('\n', '<br>')
+
+            if display_mode == "source_target":
+                html_processed = f"""
+                <table width="100%">
+                    <tr>
+                        <td width="50%" style="vertical-align:top; padding-right: 5px;">{source_text}</td>
+                        <td width="50%" style="vertical-align:top; padding-left: 5px;">{html_processed}</td>
+                    </tr>
+                </table>
+                """
+            elif display_mode == "overlay":
+                html_processed = f"""
+                <div style="position: relative;">
+                    <div style="position: absolute; top: 0; left: 0; color: transparent;">{source_text}</div>
+                    <div>{html_processed}</div>
+                </div>
+                """
 
             if is_rtl:
                 self.setLayoutDirection(Qt.RightToLeft)
@@ -352,6 +371,7 @@ if PYSIDE6_AVAILABLE:
             super().__init__(parent)
             self.text_widget = None
             self.bg_color = bg_color
+             self.overlay_display_mode_var = parent.overlay_display_mode_var
 
             # Visual parameters (stored)
             self._top_bar_height = int(top_bar_height)
@@ -775,7 +795,7 @@ class PySideOverlayManager:
             self.qapp = ensure_qapplication()
         return self.qapp
 
-    def create_overlay(self, initial_geometry, bg_color, title="Translation", **kwargs):
+    def create_overlay(self, app, initial_geometry, bg_color, title="Translation", **kwargs):
         """Create PySide overlay and forward optional visual kwargs to the overlay."""
         if not self.available:
             log_debug("PySide6 not available - cannot create overlay")
@@ -791,7 +811,7 @@ class PySideOverlayManager:
                     pass
 
             log_debug(f"Creating PySide overlay with geometry: {initial_geometry}, color: {bg_color}, opts: {kwargs}")
-            self.overlay = PySideTranslationOverlay(initial_geometry, bg_color, title, **kwargs)
+            self.overlay = PySideTranslationOverlay(initial_geometry, bg_color, title, parent=app, **kwargs)
             log_debug("PySide overlay created successfully")
             return self.overlay
         except Exception as e:

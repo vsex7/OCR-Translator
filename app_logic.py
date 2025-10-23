@@ -61,6 +61,7 @@ from handlers import (
 )
 from handlers.gemini_models_manager import GeminiModelsManager
 from handlers.openai_models_manager import OpenAIModelsManager
+from input_hook_manager import InputHookManager
 
 KEYBOARD_AVAILABLE = False
 try:
@@ -373,8 +374,13 @@ class GameChangingTranslator:
         self.target_font_type_var = tk.StringVar(value=self.config['Settings'].get('target_font_type', 'Arial'))
         self.target_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_opacity', '0.15')))
         self.target_text_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_text_opacity', '1.0')))
-        self.enable_hover_translation_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'enable_hover_translation', fallback=False))
-        self.hover_delay_var = tk.IntVar(value=int(self.config['Settings'].get('hover_delay', '500')))
+<<<<<<< HEAD
+        self.overlay_display_mode_var = tk.StringVar(value=self.config['Settings'].get('overlay_display_mode', 'target_only'))
+        self.enable_input_hook_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'enable_input_hook', fallback=False))
+=======
+        self.overlay_display_mode_var = tk.StringVar(value=self.config['Settings'].get('overlay_display_mode', 'target_only'))
+        self.enable_input_hook_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'enable_input_hook', fallback=False))
+>>>>>>> origin/feat-overlay-display-modes
 
         # Initialize OCR model display variable here to ensure it persists across UI rebuilds
         self.ocr_model_display_var = tk.StringVar()
@@ -403,6 +409,7 @@ class GameChangingTranslator:
         self.ocr_model_display_var.set(initial_ocr_display_name)
         
         # Initialize Handlers
+        self.input_hook_manager = InputHookManager(self)
         # self.cache_manager = CacheManager(self)
         self.configuration_handler = ConfigurationHandler(self)
         self.display_manager = DisplayManager(self)
@@ -490,8 +497,13 @@ class GameChangingTranslator:
         self.target_font_type_var.trace_add("write", self.settings_changed_callback)
         self.target_opacity_var.trace_add("write", self.settings_changed_callback)
         self.target_text_opacity_var.trace_add("write", self.settings_changed_callback)
-        self.enable_hover_translation_var.trace_add("write", self.settings_changed_callback)
-        self.hover_delay_var.trace_add("write", self.settings_changed_callback)
+<<<<<<< HEAD
+        self.overlay_display_mode_var.trace_add("write", self.settings_changed_callback)
+        self.enable_input_hook_var.trace_add("write", self.toggle_input_hook)
+=======
+        self.overlay_display_mode_var.trace_add("write", self.settings_changed_callback)
+        self.enable_input_hook_var.trace_add("write", self.toggle_input_hook)
+>>>>>>> origin/feat-overlay-display-modes
         self.num_beams_var.trace_add("write", self.settings_changed_callback)
 feat-multi-window-capture
 main
@@ -715,7 +727,12 @@ main
         # Refresh API statistics for the new API Usage tab
         self.root.after_idle(lambda: self._delayed_api_stats_refresh())
 
+<<<<<<< HEAD
         self.setup_mouse_listener()
+=======
+        if self.enable_input_hook_var.get():
+            self.input_hook_manager.start()
+>>>>>>> origin/feat-overlay-display-modes
 
     def _delayed_api_stats_refresh(self):
         """Delayed API statistics refresh to ensure GUI is fully ready."""
@@ -859,6 +876,7 @@ main
         except Exception as e:
             log_debug(f"Error in OCR model change callback: {e}")
 
+<<<<<<< HEAD
     def on_language_change(self, *args):
         """Called when GUI language selection changes."""
         if not self._fully_initialized or self._ui_update_in_progress:
@@ -885,6 +903,17 @@ main
         except Exception as e:
             log_debug(f"Error in language change callback: {e}")
 
+=======
+    def toggle_input_hook(self, *args):
+        """Start or stop the InputHookManager based on the checkbox."""
+        if self._fully_initialized:
+            if self.enable_input_hook_var.get():
+                self.input_hook_manager.start()
+            else:
+                self.input_hook_manager.stop()
+            self.save_settings()
+
+>>>>>>> origin/feat-overlay-display-modes
     def save_settings(self):
         if self._fully_initialized:
             return self.ui_interaction_handler.save_settings()
@@ -1996,7 +2025,8 @@ main
         if self.input_hook_enabled:
             # Enable hotkeys and mouse listener
             self.hotkey_handler.setup_hotkeys()
-            self.setup_mouse_listener()
+            if self.enable_input_hook_var.get():
+                self.input_hook_manager.start()
         else:
             # Disable hotkeys and mouse listener
             if self.KEYBOARD_AVAILABLE:
@@ -3365,6 +3395,9 @@ For more information, see the user manual."""
             self.toggle_translation()
         else:
              log_debug("Process was not running at close time.")
+
+        if self.input_hook_manager.is_running:
+            self.input_hook_manager.stop()
 
         # # Force end any remaining sessions when application closes
         # if hasattr(self, 'translation_handler'):

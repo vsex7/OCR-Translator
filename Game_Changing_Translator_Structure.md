@@ -53,6 +53,7 @@ Unified Cache System → File Persistence
 - **`statistics_handler.py`** - API usage monitoring and cost tracking
 - **`translation_handler.py`** - Translation provider coordination
 - **`ui_interaction_handler.py`** - User interface interaction management
+- **`input_hook_manager.py`** - Manages the input hook feature for in-application translation.
 
 ### **Core Processing**
 - **`worker_threads.py`** - Background threads (capture → OCR → translation)
