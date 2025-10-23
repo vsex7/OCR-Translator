@@ -2607,27 +2607,35 @@ class GameChangingTranslator:
         try:
             import win32gui
             import win32con
+            import win32process
+            import psutil
         except ImportError:
-            messagebox.showerror("Error", "PyWin32 not installed. Please install it to use this feature.")
+            messagebox.showerror("Error", "PyWin32 or psutil not installed. Please install it to use this feature.")
             return
 
         windows = []
         def callback(hwnd, extra):
             if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
-                windows.append((hwnd, win32gui.GetWindowText(hwnd)))
+                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                try:
+                    process = psutil.Process(pid)
+                    exe_name = process.name()
+                    windows.append((hwnd, win32gui.GetWindowText(hwnd), exe_name))
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
 
         win32gui.EnumWindows(callback, None)
 
         # Filter and prioritize windows
-        priority_keywords = ["Visual Studio Code", "- Google Chrome", "- Microsoft​ Edge", "- Mozilla Firefox"]
+        priority_exes = ["Code.exe", "chrome.exe", "msedge.exe", "firefox.exe"]
         priority_windows = []
         other_windows = []
 
-        for hwnd, title in windows:
-            if any(keyword in title for keyword in priority_keywords):
-                priority_windows.append((hwnd, title))
+        for hwnd, title, exe_name in windows:
+            if exe_name in priority_exes:
+                priority_windows.append((hwnd, title, exe_name))
             else:
-                other_windows.append((hwnd, title))
+                other_windows.append((hwnd, title, exe_name))
 
         sorted_windows = priority_windows + other_windows
 
@@ -2637,51 +2645,130 @@ class GameChangingTranslator:
 
         # Create a dialog to select a window
         dialog = tk.Toplevel(self.root)
-        dialog.title("Select up to 3 Windows")
+        dialog.title("Select up to 5 Windows")
         dialog.geometry("400x300")
         listbox = tk.Listbox(dialog, selectmode=tk.MULTIPLE)
         listbox.pack(fill="both", expand=True)
 
-        for i, (hwnd, title) in enumerate(sorted_windows):
-            if i >= 15:
+        for i, (hwnd, title, exe_name) in enumerate(sorted_windows):
+            if i >= 25:
                 break
-            listbox.insert(tk.END, f"{title}")
+            listbox.insert(tk.END, f"{title} ({exe_name})")
 
         def on_select():
             try:
                 selected_indices = listbox.curselection()
                 if not selected_indices:
+                    dialog.destroy()
                     return
 
-                if len(selected_indices) > 3:
-                    messagebox.showwarning("Too Many Windows", "Please select up to 3 windows.")
+                if len(selected_indices) > 5:
+                    messagebox.showwarning("Too Many Windows", "Please select up to 5 windows.")
                     return
 
-                self.source_overlays.clear()
-                self.source_areas.clear()
+                dialog.destroy()
 
                 for i in selected_indices:
-                    hwnd, title = sorted_windows[i]
-                    rect = win32gui.GetWindowRect(hwnd)
-                    x1, y1, x2, y2 = rect
-                    source_area = [x1, y1, x2, y2]
-                    self.source_areas[hwnd] = source_area
-                    log_debug(f"Auto-detected source area for '{title}' (hwnd: {hwnd}): {source_area}")
-                    create_source_overlay_om(self, hwnd, source_area)
+                    parent_hwnd, title, _ = sorted_windows[i]
 
-                    # Also create a corresponding target overlay
-                    # For simplicity, we'll place it below the source window
-                    target_area = [x1, y2, x2, y2 + 100]
-                    create_target_overlay_om(self, hwnd, target_area)
+                    # Enumerate child windows
+                    child_windows = []
+                    def enum_child_proc(hwnd, lparam):
+                        child_windows.append(hwnd)
+                        return True
+                    win32gui.EnumChildWindows(parent_hwnd, enum_child_proc, None)
 
-                messagebox.showinfo("Area Set", f"{len(selected_indices)} source area(s) set.")
+                    if child_windows:
+                        sub_dialog = tk.Toplevel(self.root)
+                        sub_dialog.title(f"Select Sub-window for '{title}'")
+                        sub_dialog.geometry("400x300")
+                        sub_listbox = tk.Listbox(sub_dialog, selectmode=tk.SINGLE)
+                        sub_listbox.pack(fill="both", expand=True)
+
+                        for child_hwnd in child_windows:
+                            child_title = win32gui.GetWindowText(child_hwnd)
+                            rect = win32gui.GetWindowRect(child_hwnd)
+                            sub_listbox.insert(tk.END, f"{child_title} - {rect}")
+
+                        def on_sub_select():
+                            try:
+                                sub_selected_index = sub_listbox.curselection()
+                                if sub_selected_index:
+                                    child_hwnd = child_windows[sub_selected_index[0]]
+                                    rect = win32gui.GetWindowRect(child_hwnd)
+                                else: # No sub-window selected, use parent
+                                    child_hwnd = parent_hwnd
+                                    rect = win32gui.GetWindowRect(parent_hwnd)
+
+                                x1, y1, x2, y2 = rect
+                                source_area = [x1, y1, x2, y2]
+                                self.source_areas[child_hwnd] = source_area
+                                log_debug(f"Selected area for '{title}' (hwnd: {child_hwnd}): {source_area}")
+                                create_source_overlay_om(self, child_hwnd, source_area)
+
+                                target_area = [x1, y2, x2, y2 + 100]
+                                create_target_overlay_om(self, child_hwnd, target_area)
+                            finally:
+                                sub_dialog.destroy()
+
+                        sub_select_button = ttk.Button(sub_dialog, text="Select", command=on_sub_select)
+                        sub_select_button.pack(pady=5)
+                        self.root.wait_window(sub_dialog)
+                    else:
+                        # No child windows, use the main window
+                        rect = win32gui.GetWindowRect(parent_hwnd)
+                        x1, y1, x2, y2 = rect
+                        source_area = [x1, y1, x2, y2]
+                        self.source_areas[parent_hwnd] = source_area
+                        log_debug(f"Auto-detected source area for '{title}' (hwnd: {parent_hwnd}): {source_area}")
+                        create_source_overlay_om(self, parent_hwnd, source_area)
+
+                        target_area = [x1, y2, x2, y2 + 100]
+                        create_target_overlay_om(self, parent_hwnd, target_area)
+
+                messagebox.showinfo("Area Set", f"{len(self.source_areas)} source area(s) set.")
+                self.update_selected_windows_ui()
             except IndexError:
                 pass
-            finally:
-                dialog.destroy()
 
         select_button = ttk.Button(dialog, text="Select", command=on_select)
         select_button.pack(pady=5)
+
+    def update_selected_windows_ui(self):
+        """Update the UI to show the currently selected windows."""
+        for widget in self.selected_windows_frame.winfo_children():
+            widget.destroy()
+
+        for hwnd, overlay in self.source_overlays.items():
+            if overlay and overlay.winfo_exists():
+                try:
+                    import win32gui
+                    title = win32gui.GetWindowText(hwnd)
+                    frame = ttk.Frame(self.selected_windows_frame)
+                    frame.pack(fill="x", padx=5, pady=2)
+                    label = ttk.Label(frame, text=title)
+                    label.pack(side="left", fill="x", expand=True)
+                    remove_button = ttk.Button(frame, text="Remove", command=lambda h=hwnd: self.remove_window(h))
+                    remove_button.pack(side="right")
+                except Exception as e:
+                    log_debug(f"Error updating selected windows UI for hwnd {hwnd}: {e}")
+
+    def remove_window(self, hwnd):
+        """Remove a window from the selection."""
+        if hwnd in self.source_overlays:
+            overlay = self.source_overlays.pop(hwnd)
+            if overlay and overlay.winfo_exists():
+                overlay.destroy()
+        if hwnd in self.target_overlays:
+            overlay = self.target_overlays.pop(hwnd)
+            if overlay and overlay.winfo_exists():
+                overlay.destroy()
+        if hwnd in self.source_areas:
+            del self.source_areas[hwnd]
+        if hwnd in self.translation_texts:
+            del self.translation_texts[hwnd]
+
+        self.update_selected_windows_ui()
 
     def update_translation_model_names(self):
         """Update translation model names with localized strings from CSV files."""

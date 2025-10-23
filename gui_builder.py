@@ -98,9 +98,12 @@ def create_main_tab(app):
     app.debug_log_toggle_btn = ttk.Button(frame, text=initial_debug_toggle_text, command=app.toggle_debug_logging, width=30)
     app.debug_log_toggle_btn.grid(row=9, column=0, padx=5, pady=5, sticky="w")
 
+    app.selected_windows_frame = ttk.LabelFrame(frame, text=app.ui_lang.get_label("selected_windows_title", "Selected Windows"))
+    app.selected_windows_frame.grid(row=10, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
+
     if app.KEYBOARD_AVAILABLE:
         shortcuts_frame = ttk.LabelFrame(frame, text=app.ui_lang.get_label("keyboard_shortcuts_title"))
-        shortcuts_frame.grid(row=10, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
+        shortcuts_frame.grid(row=11, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
         ttk.Label(shortcuts_frame, text="~ : " + app.ui_lang.get_label("shortcut_start_stop", "Start/Stop Translation")).grid(row=0, column=0, padx=10, pady=2, sticky="w")
         ttk.Label(shortcuts_frame, text="Alt+1 : " + app.ui_lang.get_label("shortcut_toggle_source", "Toggle Source Window Visibility")).grid(row=1, column=0, padx=10, pady=2, sticky="w")
         ttk.Label(shortcuts_frame, text="Alt+2 : " + app.ui_lang.get_label("shortcut_toggle_target", "Toggle Translation Window Visibility")).grid(row=2, column=0, padx=10, pady=2, sticky="w")
