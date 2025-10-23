@@ -109,6 +109,7 @@ class GameChangingTranslator:
         
         self.PYWIN32_AVAILABLE = PYWIN32_AVAILABLE
         self.click_through_enabled = False
+        self.input_hook_enabled = True
 
         self.mouse_listener = None
         self.hover_check_timer = None
@@ -492,8 +493,9 @@ class GameChangingTranslator:
         self.enable_hover_translation_var.trace_add("write", self.settings_changed_callback)
         self.hover_delay_var.trace_add("write", self.settings_changed_callback)
         self.num_beams_var.trace_add("write", self.settings_changed_callback)
-        self.marian_model_var.trace_add("write", self.settings_changed_callback) 
-        self.gui_language_var.trace_add("write", self.settings_changed_callback)
+        self.marian_model_var.trace_add("write", self.settings_changed_callback)
+        self.gemini_api_key_var.trace_add("write", self.settings_changed_callback)
+        self.gui_language_var.trace_add("write", self.on_language_change)
         self.ocr_model_var.trace_add("write", self.settings_changed_callback)
         self.ocr_model_var.trace_add("write", self.on_ocr_model_change)
 
@@ -1957,6 +1959,32 @@ class GameChangingTranslator:
             # Force quit
             self.root.quit()
 
+    def toggle_input_hook(self):
+        """Enable or disable the input hook (mouse and keyboard)."""
+        self.input_hook_enabled = not self.input_hook_enabled
+        log_debug(f"Toggling input hook to: {'Enabled' if self.input_hook_enabled else 'Disabled'}")
+
+        if self.input_hook_enabled:
+            # Enable hotkeys and mouse listener
+            self.hotkey_handler.setup_hotkeys()
+            self.setup_mouse_listener()
+        else:
+            # Disable hotkeys and mouse listener
+            if self.KEYBOARD_AVAILABLE:
+                import keyboard
+                keyboard.unhook_all()
+            if self.mouse_listener:
+                self.mouse_listener.stop()
+                self.mouse_listener = None
+
+        # Update button text
+        if hasattr(self, 'toggle_input_hook_btn') and self.toggle_input_hook_btn.winfo_exists():
+            if self.input_hook_enabled:
+                button_text = self.ui_lang.get_label("disable_input_hook_btn", "Disable Input Hook")
+            else:
+                button_text = self.ui_lang.get_label("enable_input_hook_btn", "Enable Input Hook")
+            self.toggle_input_hook_btn.config(text=button_text)
+
     def toggle_click_through(self):
         """Toggle click-through (mouse transparency) for all overlay windows."""
         if not self.PYWIN32_AVAILABLE:
@@ -3212,6 +3240,13 @@ For more information, see the user manual."""
                 else:
                     self.debug_log_toggle_btn.config(text=self.ui_lang.get_label("toggle_debug_log_enable_btn"))
             
+            # Update input hook button text
+            if hasattr(self, 'toggle_input_hook_btn') and self.toggle_input_hook_btn.winfo_exists():
+                if self.input_hook_enabled:
+                    self.toggle_input_hook_btn.config(text=self.ui_lang.get_label("disable_input_hook_btn", "Disable Input Hook"))
+                else:
+                    self.toggle_input_hook_btn.config(text=self.ui_lang.get_label("enable_input_hook_btn", "Enable Input Hook"))
+
             log_debug(f"UI language completely rebuilt for: {self.ui_lang.current_lang}")
         except Exception as e:
             log_debug(f"Error updating UI language: {e}")
@@ -3563,3 +3598,26 @@ For more information, see the user manual."""
         except Exception as e:
             log_debug(f"Error during single hover translation for hwnd {hwnd}: {e}")
             traceback.print_exc()
+
+    def on_language_change(self, *args):
+        """Callback for when the GUI language is changed."""
+        try:
+            selected_language_name = self.gui_language_var.get()
+            lang_code = self.ui_lang.get_language_code_from_name(selected_language_name)
+
+            if lang_code and lang_code != self.ui_lang.current_lang:
+                log_debug(f"Language change requested to: {selected_language_name} ({lang_code})")
+
+                # Load the new language
+                self.ui_lang.load_language(lang_code)
+
+                # Update the entire UI
+                self.update_ui_language()
+
+                # Save settings after successful language change
+                if self._fully_initialized:
+                    self.save_settings()
+            elif not lang_code:
+                log_debug(f"Could not find language code for: {selected_language_name}")
+        except Exception as e:
+            log_debug(f"Error during language change: {e}")
