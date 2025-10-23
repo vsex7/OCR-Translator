@@ -98,12 +98,15 @@ def create_main_tab(app):
     app.debug_log_toggle_btn = ttk.Button(frame, text=initial_debug_toggle_text, command=app.toggle_debug_logging, width=30)
     app.debug_log_toggle_btn.grid(row=9, column=0, padx=5, pady=5, sticky="w")
 
+    app.toggle_click_through_btn = ttk.Button(frame, text=app.ui_lang.get_label("toggle_click_through_btn", "Enable Click-through"), command=app.toggle_click_through, width=30)
+    app.toggle_click_through_btn.grid(row=10, column=0, padx=5, pady=5, sticky="w")
+
     app.selected_windows_frame = ttk.LabelFrame(frame, text=app.ui_lang.get_label("selected_windows_title", "Selected Windows"))
-    app.selected_windows_frame.grid(row=10, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
+    app.selected_windows_frame.grid(row=11, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
 
     if app.KEYBOARD_AVAILABLE:
         shortcuts_frame = ttk.LabelFrame(frame, text=app.ui_lang.get_label("keyboard_shortcuts_title"))
-        shortcuts_frame.grid(row=11, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
+        shortcuts_frame.grid(row=12, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
         ttk.Label(shortcuts_frame, text="~ : " + app.ui_lang.get_label("shortcut_start_stop", "Start/Stop Translation")).grid(row=0, column=0, padx=10, pady=2, sticky="w")
         ttk.Label(shortcuts_frame, text="Alt+1 : " + app.ui_lang.get_label("shortcut_toggle_source", "Toggle Source Window Visibility")).grid(row=1, column=0, padx=10, pady=2, sticky="w")
         ttk.Label(shortcuts_frame, text="Alt+2 : " + app.ui_lang.get_label("shortcut_toggle_target", "Toggle Translation Window Visibility")).grid(row=2, column=0, padx=10, pady=2, sticky="w")
@@ -1278,6 +1281,17 @@ def create_settings_tab(app):
     
     ttk.Label(file_cache_frame_outer, text=f"{app.ui_lang.get_label('cache_files_label')} {os.path.basename(app.google_cache_file)}, {os.path.basename(app.deepl_cache_file)}, {os.path.basename(app.gemini_cache_file)}, openai_cache.txt", wraplength=400).grid(row=5, column=0, columnspan=2, padx=5, pady=2, sticky="w")
     ttk.Button(file_cache_frame_outer, text=app.ui_lang.get_label("clear_caches_btn"), command=app.clear_file_caches).grid(row=6, column=0, padx=5, pady=5, sticky="w")
+    current_row += 1
+
+    hover_frame = ttk.LabelFrame(frame, text=app.ui_lang.get_label("hover_translation_title", "Hover Translation"))
+    hover_frame.grid(row=current_row, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
+    ttk.Checkbutton(hover_frame, text=app.ui_lang.get_label("enable_hover_translation_checkbox", "Enable Hover Translation"), variable=app.enable_hover_translation_var).grid(row=0, column=0, padx=5, pady=2, sticky="w")
+
+    ttk.Label(hover_frame, text=app.ui_lang.get_label("hover_delay_label", "Hover Delay (ms)")).grid(row=1, column=0, padx=5, pady=2, sticky="w")
+    hover_delay_slider = ttk.Scale(hover_frame, from_=100, to=2000, orient=tk.HORIZONTAL, variable=app.hover_delay_var, length=200)
+    hover_delay_slider.grid(row=1, column=1, padx=5, pady=2, sticky="w")
+    hover_delay_label = ttk.Label(hover_frame, textvariable=app.hover_delay_var)
+    hover_delay_label.grid(row=1, column=2, padx=5, pady=2, sticky="w")
     current_row += 1
     
     button_frame_outer = ttk.Frame(frame)

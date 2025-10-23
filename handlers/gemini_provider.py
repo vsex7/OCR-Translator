@@ -312,3 +312,8 @@ class GeminiProvider(AbstractLLMProvider):
         """Check if Gemini error should be suppressed from display."""
         # Suppress 503 errors from being displayed in translation window
         return "503 UNAVAILABLE" in error_str
+
+    def translate(self, text_to_translate, source_lang, target_lang, ocr_batch_number=None, is_hover=False):
+        """Main translation method for Gemini."""
+        # This now calls the base class method, passing along the is_hover flag.
+        return super().translate(text_to_translate, source_lang, target_lang, ocr_batch_number, is_hover)

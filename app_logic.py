@@ -10,6 +10,18 @@ import threading
 import time
 import queue
 import sys
+
+is_windows = sys.platform == 'win32'
+if is_windows:
+    try:
+        import win32gui
+        import win32con
+        PYWIN32_AVAILABLE = True
+    except ImportError:
+        PYWIN32_AVAILABLE = False
+else:
+    PYWIN32_AVAILABLE = False
+
 from PIL import Image, ImageTk
 import os
 import re
@@ -18,6 +30,8 @@ import traceback
 import io
 import base64
 import concurrent.futures
+
+from pynput import mouse
 
 from logger import log_debug, set_debug_logging_enabled, is_debug_logging_enabled
 from resource_handler import get_resource_path
@@ -93,6 +107,15 @@ class GameChangingTranslator:
         self.root.minsize(500, 430)
         self.root.resizable(True, True)
         
+        self.PYWIN32_AVAILABLE = PYWIN32_AVAILABLE
+        self.click_through_enabled = False
+
+        self.mouse_listener = None
+        self.hover_check_timer = None
+        self.last_mouse_pos = None
+        self.hovered_hwnd = None
+        self.hover_start_time = None
+
         self._fully_initialized = False # Flag for settings save callback
         self.toggle_in_progress = False
 
@@ -349,6 +372,8 @@ class GameChangingTranslator:
         self.target_font_type_var = tk.StringVar(value=self.config['Settings'].get('target_font_type', 'Arial'))
         self.target_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_opacity', '0.15')))
         self.target_text_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_text_opacity', '1.0')))
+        self.enable_hover_translation_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'enable_hover_translation', fallback=False))
+        self.hover_delay_var = tk.IntVar(value=int(self.config['Settings'].get('hover_delay', '500')))
 
         # Initialize OCR model display variable here to ensure it persists across UI rebuilds
         self.ocr_model_display_var = tk.StringVar()
@@ -464,6 +489,8 @@ class GameChangingTranslator:
         self.target_font_type_var.trace_add("write", self.settings_changed_callback)
         self.target_opacity_var.trace_add("write", self.settings_changed_callback)
         self.target_text_opacity_var.trace_add("write", self.settings_changed_callback)
+        self.enable_hover_translation_var.trace_add("write", self.settings_changed_callback)
+        self.hover_delay_var.trace_add("write", self.settings_changed_callback)
         self.num_beams_var.trace_add("write", self.settings_changed_callback)
         self.marian_model_var.trace_add("write", self.settings_changed_callback) 
         self.gui_language_var.trace_add("write", self.settings_changed_callback)
@@ -682,6 +709,8 @@ class GameChangingTranslator:
         
         # Refresh API statistics for the new API Usage tab
         self.root.after_idle(lambda: self._delayed_api_stats_refresh())
+
+        self.setup_mouse_listener()
 
     def _delayed_api_stats_refresh(self):
         """Delayed API statistics refresh to ensure GUI is fully ready."""
@@ -1927,6 +1956,55 @@ class GameChangingTranslator:
             log_debug(f"Error during update exit: {e}")
             # Force quit
             self.root.quit()
+
+    def toggle_click_through(self):
+        """Toggle click-through (mouse transparency) for all overlay windows."""
+        if not self.PYWIN32_AVAILABLE:
+            messagebox.showerror("Error", "PyWin32 library is not available. This feature works only on Windows.")
+            log_debug("Attempted to toggle click-through, but PyWin32 is not available.")
+            return
+
+        self.click_through_enabled = not self.click_through_enabled
+        log_debug(f"Toggling click-through mode to: {'Enabled' if self.click_through_enabled else 'Disabled'}")
+
+        try:
+            overlays_to_modify = []
+            overlays_to_modify.extend(self.source_overlays.values())
+            overlays_to_modify.extend(self.target_overlays.values())
+            if self.target_overlay: # Handle the single target_overlay as well
+                overlays_to_modify.append(self.target_overlay)
+
+            # Use a set to avoid modifying the same overlay twice
+            unique_overlays = set(filter(None, overlays_to_modify))
+
+            for overlay in unique_overlays:
+                if overlay.winfo_exists():
+                    hwnd = overlay.winfo_id()
+                    current_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+
+                    if self.click_through_enabled:
+                        # Enable click-through: Add WS_EX_TRANSPARENT
+                        # WS_EX_LAYERED is also needed for transparency effects
+                        new_style = current_style | win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
+                    else:
+                        # Disable click-through: Remove WS_EX_TRANSPARENT
+                        new_style = current_style & ~win32con.WS_EX_TRANSPARENT
+
+                    win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, new_style)
+                    log_debug(f"Set GWL_EXSTYLE for hwnd {hwnd} to {new_style}")
+
+            # Update button text
+            if hasattr(self, 'toggle_click_through_btn') and self.toggle_click_through_btn.winfo_exists():
+                if self.click_through_enabled:
+                    button_text = self.ui_lang.get_label("disable_click_through_btn", "Disable Click-through")
+                else:
+                    button_text = self.ui_lang.get_label("enable_click_through_btn", "Enable Click-through")
+                self.toggle_click_through_btn.config(text=button_text)
+                log_debug(f"Updated click-through button text to: {button_text}")
+
+        except Exception as e:
+            log_debug(f"Error toggling click-through: {e}")
+            messagebox.showerror("Error", f"An error occurred while toggling click-through: {e}")
 
     def toggle_debug_logging(self):
         """Toggle debug logging on/off and update button text."""
@@ -3204,6 +3282,10 @@ For more information, see the user manual."""
     def on_closing(self):
         log_debug("Main window close requested. Initiating shutdown...")
         
+        if self.mouse_listener:
+            self.mouse_listener.stop()
+            log_debug("Mouse listener stopped.")
+
         # Close OCR Preview window if open
         if self.ocr_preview_window is not None:
             try:
@@ -3321,3 +3403,163 @@ For more information, see the user manual."""
         except Exception as e_drw:
              log_debug(f"Error destroying root window: {e_drw}")
         log_debug("Application shutdown sequence complete.")
+
+    def copy_translation_to_clipboard(self, hwnd=None):
+        """Copy the current translation text to the clipboard."""
+        try:
+            import pyperclip
+            text_widget = self.translation_texts.get(hwnd) if hwnd is not None else self.translation_text
+            current_text = ""
+            if text_widget:
+                if isinstance(text_widget, tk.Text):
+                    current_text = text_widget.get("1.0", tk.END).strip()
+                elif hasattr(text_widget, 'toPlainText'): # PySide
+                    current_text = text_widget.toPlainText().strip()
+
+            if current_text:
+                pyperclip.copy(current_text)
+                log_debug(f"Copied to clipboard: '{current_text}'")
+            else:
+                log_debug("No text to copy to clipboard.")
+        except ImportError:
+            log_debug("pyperclip library not found. Cannot copy to clipboard.")
+            messagebox.showerror("Error", "Pyperclip library not found. Please install it to use this feature.")
+        except Exception as e:
+            log_debug(f"Error copying to clipboard: {e}")
+
+    def read_translation_aloud(self, hwnd=None):
+        """Read the current translation text aloud using a TTS engine."""
+        try:
+            import pyttsx3
+            text_widget = self.translation_texts.get(hwnd) if hwnd is not None else self.translation_text
+            current_text = ""
+            if text_widget:
+                if isinstance(text_widget, tk.Text):
+                    current_text = text_widget.get("1.0", tk.END).strip()
+                elif hasattr(text_widget, 'toPlainText'): # PySide
+                    current_text = text_widget.toPlainText().strip()
+
+            if current_text:
+                log_debug(f"Reading aloud: '{current_text}'")
+                engine = pyttsx3.init()
+                engine.say(current_text)
+                engine.runAndWait()
+            else:
+                log_debug("No text to read aloud.")
+        except ImportError:
+            log_debug("pyttsx3 library not found. Cannot read aloud.")
+            messagebox.showerror("Error", "pyttsx3 library not found. Please install it to use this feature.")
+        except Exception as e:
+            log_debug(f"Error reading text aloud: {e}")
+
+    def setup_mouse_listener(self):
+        """Initializes and starts the pynput mouse listener."""
+        try:
+            self.mouse_listener = mouse.Listener(on_move=self.on_mouse_move)
+            self.mouse_listener.start()
+            log_debug("Mouse listener started for hover translation.")
+        except Exception as e:
+            log_debug(f"Failed to start mouse listener: {e}")
+
+    def on_mouse_move(self, x, y):
+        """Callback function for when the mouse moves."""
+        self.last_mouse_pos = (x, y)
+        # Schedule a check if one isn't already pending
+        if self.hover_check_timer is None:
+            self.hover_check_timer = self.root.after(100, self.check_hover)
+
+    def check_hover(self):
+        """Periodically checks if the mouse is hovering over a source overlay."""
+        # Clear the timer ID so a new one can be scheduled by on_mouse_move
+        self.hover_check_timer = None
+
+        # Condition checks to proceed
+        if not self.enable_hover_translation_var.get() or self.is_running:
+            if self.hovered_hwnd is not None:
+                log_debug(f"Hover tracking disabled. Main translation running: {self.is_running}")
+                self.hovered_hwnd = None
+                self.hover_start_time = None
+            return
+
+        current_pos = self.last_mouse_pos
+        if not current_pos:
+            return
+
+        found_hover_target = None
+        for hwnd, overlay in self.source_overlays.items():
+            if overlay.winfo_exists():
+                try:
+                    x1, y1, x2, y2 = overlay.get_geometry()
+                    if x1 <= current_pos[0] <= x2 and y1 <= current_pos[1] <= y2:
+                        found_hover_target = hwnd
+                        break
+                except Exception:
+                    # Overlay might be destroyed during check
+                    continue
+
+        # Process hover state changes
+        if found_hover_target:
+            if self.hovered_hwnd != found_hover_target:
+                # Started hovering on a new window
+                log_debug(f"Hover started on hwnd {found_hover_target}")
+                self.hovered_hwnd = found_hover_target
+                self.hover_start_time = time.monotonic()
+            else:
+                # Still hovering on the same window, check for trigger
+                delay_ms = self.hover_delay_var.get()
+                if (time.monotonic() - self.hover_start_time) * 1000 >= delay_ms:
+                    log_debug(f"Hover triggered for hwnd {self.hovered_hwnd} after {delay_ms}ms")
+                    self.trigger_single_translation(self.hovered_hwnd)
+                    # Reset after triggering to prevent immediate re-trigger
+                    self.hovered_hwnd = None
+                    self.hover_start_time = None
+        else:
+            # Not hovering over any window
+            if self.hovered_hwnd is not None:
+                log_debug(f"Hover ended on hwnd {self.hovered_hwnd}")
+                self.hovered_hwnd = None
+                self.hover_start_time = None
+
+        # Reschedule the check to keep the loop running
+        if self.enable_hover_translation_var.get() and not self.is_running:
+            self.hover_check_timer = self.root.after(100, self.check_hover)
+
+    def trigger_single_translation(self, hwnd):
+        """Performs a one-time capture, OCR, and translation for a specific window."""
+        if hwnd not in self.source_overlays:
+            return
+        overlay = self.source_overlays[hwnd]
+        if not overlay.winfo_exists():
+            return
+
+        try:
+            import pyautogui
+            x1, y1, x2, y2 = overlay.get_geometry()
+            width, height = x2 - x1, y2 - y1
+            if width <= 0 or height <= 0:
+                return
+
+            screenshot = pyautogui.screenshot(region=(x1, y1, width, height))
+
+            item_data = {'hwnd': hwnd, 'timestamp': time.monotonic(), 'image': screenshot}
+
+            ocr_text = self.translation_handler.perform_ocr(screenshot, item_data)
+
+            if not ocr_text or self.is_placeholder_text(ocr_text):
+                log_debug(f"Hover OCR for hwnd {hwnd} resulted in no significant text.")
+                return
+
+            log_debug(f"Hover OCR result for hwnd {hwnd}: '{ocr_text}'")
+            # This needs to be a blocking call for hover mode.
+            translated_text = self.translation_handler.translate_text(ocr_text, is_hover=True)
+
+            target_overlay = self.target_overlays.get(hwnd)
+            if target_overlay and not target_overlay.winfo_viewable():
+                target_overlay.show()
+
+            self.update_translation_text(translated_text, hwnd=hwnd)
+            log_debug(f"Hover translation displayed for hwnd {hwnd}.")
+
+        except Exception as e:
+            log_debug(f"Error during single hover translation for hwnd {hwnd}: {e}")
+            traceback.print_exc()

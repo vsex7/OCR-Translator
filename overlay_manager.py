@@ -396,6 +396,37 @@ def create_target_overlay_om(app, hwnd=None, area=None, skip_preservation=False)
                     translation_text.tag_configure("ltr", justify=tk.LEFT)
                     translation_text.is_rtl = False
 
+        def show_context_menu(event, hwnd=None):
+            context_menu = tk.Menu(target_overlay, tearoff=0)
+
+            text_widget = app.translation_texts.get(hwnd) if hwnd is not None else app.translation_text
+            current_text = ""
+            if text_widget:
+                if isinstance(text_widget, tk.Text):
+                    current_text = text_widget.get("1.0", tk.END).strip()
+                elif hasattr(text_widget, 'toPlainText'):
+                    current_text = text_widget.toPlainText().strip()
+
+            def copy_text():
+                app.copy_translation_to_clipboard(hwnd)
+
+            def read_aloud():
+                app.read_translation_aloud(hwnd)
+
+            if current_text:
+                context_menu.add_command(label=app.ui_lang.get_label("context_menu_copy", "Copy"), command=copy_text)
+                context_menu.add_command(label=app.ui_lang.get_label("context_menu_read_aloud", "Read Aloud"), command=read_aloud)
+            else:
+                context_menu.add_command(label=app.ui_lang.get_label("context_menu_no_text", "No text to interact with"), state="disabled")
+
+            try:
+                context_menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                context_menu.grab_release()
+
+        translation_text.bind("<Button-3>", lambda event, h=hwnd: show_context_menu(event, h))
+        target_overlay.content_frame.bind("<Button-3>", lambda event, h=hwnd: show_context_menu(event, h))
+
                 translation_text.bind("<Configure>", app.display_manager.on_translation_widget_resize)
                 translation_text.pack(fill=tk.BOTH, expand=True)
 
