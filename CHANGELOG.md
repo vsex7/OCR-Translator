@@ -5,6 +5,14 @@ All notable changes to the Game-Changing Translator project will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2025-10-23
+
+### Added
+- **Chinese Language Support**: Added full support for Chinese (Simplified) for the application's user interface, including dynamic language switching without an application restart.
+
+### Fixed
+- **UI Event Handler Duplication**: Resolved a bug where changing the UI language could cause duplicate event handlers to be bound, leading to potential performance degradation.
+
 ## [3.7.0] - 2025-10-04
 
 ### Added
