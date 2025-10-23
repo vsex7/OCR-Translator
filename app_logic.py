@@ -681,6 +681,22 @@ class GameChangingTranslator:
         # Refresh API statistics for the new API Usage tab
         self.root.after_idle(lambda: self._delayed_api_stats_refresh())
 
+        # Temporary screenshot for verification
+        self.root.after(10000, self.take_screenshot)
+
+    def take_screenshot(self):
+        from PIL import ImageGrab
+        try:
+            x = self.root.winfo_x()
+            y = self.root.winfo_y()
+            w = self.root.winfo_width()
+            h = self.root.winfo_height()
+            img = ImageGrab.grab((x, y, x + w, y + h))
+            img.save("jules-scratch/verification/verification.png")
+            log_debug("Screenshot saved successfully to jules-scratch/verification/verification.png")
+        except Exception as e:
+            log_debug(f"Error taking screenshot: {e}")
+
     def _delayed_api_stats_refresh(self):
         """Delayed API statistics refresh to ensure GUI is fully ready."""
         try:
