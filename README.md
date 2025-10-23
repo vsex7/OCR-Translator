@@ -70,6 +70,11 @@ This application was developed or rather vibe-coded with the support of the foll
 
 ## Key Features
 
+### 🚀 NEW in Version 3.8.0
+- **✨ Hover Translation Mode**: Translate text on-demand by simply hovering your mouse over a source area.
+- **🖱️ Click-Through Overlays**: Make overlay windows transparent to mouse clicks, allowing interaction with underlying game or application elements.
+- **📋 Context Menu**: Right-click on the translation overlay to quickly **Copy** the text or have it **Read Aloud** using a text-to-speech engine.
+
 ### 🚀 NEW in Version 3.7.0
 - **🎯 DeepL Translation with Context - A Game-Changing First!** 🌟: Revolutionary context-aware DeepL translation that intelligently remembers up to 3 previous subtitles for **dramatically improved grammar, accuracy, and natural conversational flow** ✨
   - 🎁 **Completely FREE Feature** - Context usage **doesn't count** towards DeepL's character limits! Unlimited context-aware translations at no extra cost 💰

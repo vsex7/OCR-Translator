@@ -333,7 +333,7 @@ Call Duration: {call_duration:.3f} seconds
         
         return result[0]
 
-    def translate_text(self, text_content_main, ocr_batch_number=None):
+    def translate_text(self, text_content_main, ocr_batch_number=None, is_hover=False):
         cleaned_text_main = text_content_main.strip() if text_content_main else ""
         if not cleaned_text_main or self.is_placeholder_text(cleaned_text_main):
             return None
@@ -450,10 +450,10 @@ Call Duration: {call_duration:.3f} seconds
             translated_api_text = self._deepl_translate(cleaned_text_main, source_lang, target_lang)
         elif selected_model == 'gemini_api':
             provider = self.providers['gemini']
-            translated_api_text = provider.translate(cleaned_text_main, source_lang, target_lang, ocr_batch_number)
+            translated_api_text = provider.translate(cleaned_text_main, source_lang, target_lang, ocr_batch_number, is_hover=is_hover)
         elif self.app.is_openai_model(selected_model):
             provider = self.providers['openai']
-            translated_api_text = provider.translate(cleaned_text_main, source_lang, target_lang, ocr_batch_number)
+            translated_api_text = provider.translate(cleaned_text_main, source_lang, target_lang, ocr_batch_number, is_hover=is_hover)
         
         # 4. Store successful translation
         if translated_api_text and not self._is_error_message(translated_api_text):

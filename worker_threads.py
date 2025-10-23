@@ -77,27 +77,32 @@ def run_capture_thread(app):
                     if not app.is_running: break
                     continue
             
-            overlay = app.source_overlay
-            if not overlay or not isinstance(overlay, tk.Toplevel) or not overlay.winfo_exists():
+            if not app.source_overlays:
                 if app.is_running: time.sleep(max(current_scan_interval_sec, 0.5))
                 continue
-            
-            try:
-                area = overlay.get_geometry()
-            except tk.TclError:
-                if app.is_running: time.sleep(max(current_scan_interval_sec, 0.5))
-                continue
-            if not area:
-                if app.is_running: time.sleep(max(current_scan_interval_sec, 0.2))
-                continue
-
-            x1, y1, x2, y2 = map(int, area); width, height = x2-x1, y2-y1
-            if width <=0 or height <=0: continue
 
             capture_moment = time.monotonic()
-            screenshot = pyautogui.screenshot(region=(x1,y1,width,height))
-            last_cap_time = capture_moment
+            for hwnd, overlay in app.source_overlays.items():
+                if not overlay or not isinstance(overlay, tk.Toplevel) or not overlay.winfo_exists():
+                    continue
 
+                try:
+                    area = overlay.get_geometry()
+                except tk.TclError:
+                    continue
+                if not area:
+                    continue
+
+                x1, y1, x2, y2 = map(int, area); width, height = x2-x1, y2-y1
+                if width <=0 or height <=0: continue
+
+                screenshot = pyautogui.screenshot(region=(x1,y1,width,height))
+
+                # Pass the hwnd along with the screenshot
+                if not app.ocr_queue.full():
+                    app.ocr_queue.put_nowait((hwnd, screenshot))
+
+            last_cap_time = capture_moment
             img_small = screenshot.resize((max(1, width//4), max(1, height//4)), Image.Resampling.NEAREST if hasattr(Image, "Resampling") else Image.NEAREST)
             img_hash = hashlib.md5(img_small.tobytes()).hexdigest()
 
@@ -191,7 +196,7 @@ def run_ocr_thread(app):
                     continue
             
             try:
-                screenshot_pil = app.ocr_queue.get(timeout=0.5)
+                hwnd, screenshot_pil = app.ocr_queue.get(timeout=0.5)
             except queue.Empty:
                 time.sleep(0.05)
                 continue
@@ -202,7 +207,7 @@ def run_ocr_thread(app):
 
             # ==================== OCR MODEL ROUTING ====================
             if app.is_api_based_ocr_model(ocr_model):
-                run_api_ocr(app, screenshot_pil)
+                run_api_ocr(app, hwnd, screenshot_pil)
                 continue # Skip to the next loop iteration
             
             elif ocr_model == 'tesseract':
@@ -360,7 +365,7 @@ def run_translation_thread(app):
 
 # ==================== GENERIC ASYNC API OCR WORKFLOW ====================
 
-def run_api_ocr(app, screenshot_pil):
+def run_api_ocr(app, hwnd, screenshot_pil):
     """Start API-based OCR processing for a screenshot using the currently selected provider."""
     try:
         provider_name = app.get_ocr_model_setting()
@@ -391,36 +396,36 @@ def run_api_ocr(app, screenshot_pil):
         app.active_ocr_calls.add(sequence_number)
         app.ocr_thread_pool.submit(
             process_api_ocr_async,
-            app, webp_image_data, source_lang, sequence_number, provider_name
+            app, hwnd, webp_image_data, source_lang, sequence_number, provider_name
         )
-        log_debug(f"Started {provider_name} OCR batch {sequence_number} (active calls: {len(app.active_ocr_calls)})")
+        log_debug(f"Started {provider_name} OCR batch {sequence_number} for hwnd {hwnd} (active calls: {len(app.active_ocr_calls)})")
         
     except Exception as e:
         log_debug(f"Error starting API OCR batch: {type(e).__name__} - {e}")
 
-def process_api_ocr_async(app, webp_image_data, source_lang, sequence_number, provider_name):
+def process_api_ocr_async(app, hwnd, webp_image_data, source_lang, sequence_number, provider_name):
     """Process an API OCR call asynchronously. This is the generic worker function."""
     try:
-        log_debug(f"Processing {provider_name} OCR batch {sequence_number}")
+        log_debug(f"Processing {provider_name} OCR batch {sequence_number} for hwnd {hwnd}")
         
         ocr_result = app.translation_handler.perform_ocr(webp_image_data, source_lang)
         
         log_debug(f"{provider_name} OCR batch {sequence_number} completed: '{ocr_result}', scheduling response")
-        app.root.after(0, process_api_ocr_response, app, ocr_result, sequence_number, source_lang, provider_name)
+        app.root.after(0, process_api_ocr_response, app, hwnd, ocr_result, sequence_number, source_lang, provider_name)
         
     except Exception as e:
         log_debug(f"Error in async {provider_name} OCR batch {sequence_number}: {type(e).__name__} - {e}")
         error_msg = f"<e>: OCR batch {sequence_number} error: {str(e)}"
-        app.root.after(0, process_api_ocr_response, app, error_msg, sequence_number, source_lang, provider_name)
+        app.root.after(0, process_api_ocr_response, app, hwnd, error_msg, sequence_number, source_lang, provider_name)
     
     finally:
         app.active_ocr_calls.discard(sequence_number)
         log_debug(f"{provider_name} OCR batch {sequence_number} finished (active calls: {len(app.active_ocr_calls)})")
 
-def process_api_ocr_response(app, ocr_result, sequence_number, source_lang, provider_name):
+def process_api_ocr_response(app, hwnd, ocr_result, sequence_number, source_lang, provider_name):
     """Process any API OCR response with chronological order enforcement. This is the generic callback."""
     try:
-        log_debug(f"Processing {provider_name} OCR response for batch {sequence_number}: '{ocr_result}'")
+        log_debug(f"Processing {provider_name} OCR response for batch {sequence_number} from hwnd {hwnd}: '{ocr_result}'")
         
         if not hasattr(app, 'last_displayed_batch_sequence'):
             app.last_displayed_batch_sequence = 0
@@ -449,7 +454,7 @@ def process_api_ocr_response(app, ocr_result, sequence_number, source_lang, prov
         
         app.last_processed_subtitle = ocr_result
         app.reset_clear_timeout()
-        start_async_translation(app, ocr_result, sequence_number)
+        start_async_translation(app, ocr_result, sequence_number, hwnd)
         app.last_displayed_batch_sequence = sequence_number
         
     except Exception as e:
@@ -458,7 +463,7 @@ def process_api_ocr_response(app, ocr_result, sequence_number, source_lang, prov
 
 # ==================== ASYNC TRANSLATION PROCESSING (Phase 2) ====================
 
-def start_async_translation(app, text_to_translate, ocr_sequence_number):
+def start_async_translation(app, text_to_translate, ocr_sequence_number, hwnd):
     """Start async translation processing to eliminate queue bottlenecks."""
     try:
         app.initialize_async_translation_infrastructure()
@@ -474,21 +479,21 @@ def start_async_translation(app, text_to_translate, ocr_sequence_number):
         
         future = app.translation_thread_pool.submit(
             process_translation_async,
-            app, text_to_translate, translation_sequence, ocr_sequence_number
+            app, text_to_translate, translation_sequence, ocr_sequence_number, hwnd
         )
         
-        log_debug(f"Started async translation {translation_sequence} for OCR batch {ocr_sequence_number} (active calls: {len(app.active_translation_calls)}): '{text_to_translate}'")
+        log_debug(f"Started async translation {translation_sequence} for OCR batch {ocr_sequence_number} from hwnd {hwnd} (active calls: {len(app.active_translation_calls)}): '{text_to_translate}'")
         
     except Exception as e:
         log_debug(f"Error starting async translation: {type(e).__name__} - {e}")
 
 
-def process_translation_async(app, text_to_translate, translation_sequence, ocr_sequence_number):
+def process_translation_async(app, text_to_translate, translation_sequence, ocr_sequence_number, hwnd):
     """Process translation API call asynchronously with timeout and staleness handling."""
     start_time = time.monotonic()
     
     try:
-        log_debug(f"Processing async translation {translation_sequence}")
+        log_debug(f"Processing async translation {translation_sequence} for hwnd {hwnd}")
         
         translation_result = app.translation_handler.translate_text_with_timeout(text_to_translate, timeout_seconds=10.0, ocr_batch_number=ocr_sequence_number)
         
@@ -498,14 +503,14 @@ def process_translation_async(app, text_to_translate, translation_sequence, ocr_
         
         log_debug(f"Translation {translation_sequence} completed in {elapsed_time:.3f}s: '{translation_result}'")
         
-        app.root.after(0, process_translation_response, app, translation_result, translation_sequence, text_to_translate, ocr_sequence_number)
+        app.root.after(0, process_translation_response, app, translation_result, translation_sequence, text_to_translate, ocr_sequence_number, hwnd)
         
     except Exception as e:
         elapsed_time = time.monotonic() - start_time
         log_debug(f"Error in async translation {translation_sequence} after {elapsed_time:.2f}s: {type(e).__name__} - {e}")
         
         error_msg = f"Translation error: {str(e)}"
-        app.root.after(0, process_translation_response, app, error_msg, translation_sequence, text_to_translate, ocr_sequence_number)
+        app.root.after(0, process_translation_response, app, error_msg, translation_sequence, text_to_translate, ocr_sequence_number, hwnd)
     
     finally:
         try:
@@ -515,10 +520,10 @@ def process_translation_async(app, text_to_translate, translation_sequence, ocr_
             log_debug(f"Error cleaning up translation {translation_sequence}: {cleanup_error}")
 
 
-def process_translation_response(app, translation_result, translation_sequence, original_text, ocr_sequence_number):
+def process_translation_response(app, translation_result, translation_sequence, original_text, ocr_sequence_number, hwnd):
     """Process translation response with chronological order enforcement - same logic as OCR."""
     try:
-        log_debug(f"Processing translation response for sequence {translation_sequence}: '{translation_result}'")
+        log_debug(f"Processing translation response for sequence {translation_sequence} for hwnd {hwnd}: '{translation_result}'")
         
         if translation_result is None:
             log_debug(f"Translation {translation_sequence}: Timeout occurred, no message displayed (suppressed)")
@@ -544,15 +549,15 @@ def process_translation_response(app, translation_result, translation_sequence, 
         
         if isinstance(translation_result, str) and any(translation_result.startswith(p) for p in error_prefixes):
             log_debug(f"Translation error in sequence {translation_sequence}: {translation_result}")
-            app.update_translation_text(f"Translation Error:\n{translation_result}")
+            app.update_translation_text(f"Translation Error:\n{translation_result}", hwnd)
             app.last_displayed_translation_sequence = translation_sequence
             app.last_successful_translation_time = time.monotonic()
             return
         
         if isinstance(translation_result, str) and translation_result.strip():
             final_processed_translation = post_process_translation_text(translation_result)
-            app.update_translation_text(final_processed_translation)
-            log_debug(f"Translation {translation_sequence} displayed: '{final_processed_translation}' (from OCR batch {ocr_sequence_number})")
+            app.update_translation_text(final_processed_translation, hwnd)
+            log_debug(f"Translation {translation_sequence} displayed for hwnd {hwnd}: '{final_processed_translation}' (from OCR batch {ocr_sequence_number})")
             app.last_displayed_translation_sequence = translation_sequence
             app.last_successful_translation_time = time.monotonic()
         else:
@@ -561,6 +566,6 @@ def process_translation_response(app, translation_result, translation_sequence, 
     except Exception as e:
         log_debug(f"Error processing translation response for sequence {translation_sequence}: {type(e).__name__} - {e}")
         try:
-            app.update_translation_text(f"Translation Processing Error:\n{type(e).__name__}")
+            app.update_translation_text(f"Translation Processing Error:\n{type(e).__name__}", hwnd)
         except:
             pass

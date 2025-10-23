@@ -79,15 +79,16 @@ def create_main_tab(app):
 
     ttk.Button(frame, text=app.ui_lang.get_label("select_source_btn"), command=app.select_source_area, width=30).grid(row=1, column=0, padx=5, pady=5, sticky="w")
     ttk.Button(frame, text=app.ui_lang.get_label("select_target_btn"), command=app.select_target_area, width=30).grid(row=2, column=0, padx=5, pady=5, sticky="w")
+    ttk.Button(frame, text=app.ui_lang.get_label("auto_detect_window_btn", "Auto-detect Window"), command=app.auto_detect_window, width=30).grid(row=3, column=0, padx=5, pady=5, sticky="w")
     app.start_stop_btn = ttk.Button(frame, text=app.ui_lang.get_label("start_btn"), command=app.toggle_translation, width=30)
-    app.start_stop_btn.grid(row=3, column=0, padx=5, pady=5, sticky="w")
+    app.start_stop_btn.grid(row=4, column=0, padx=5, pady=5, sticky="w")
     
     # Remove individual tab bindings and add a general binding in app_logic.py after tabs are created
     app.main_tab_start_button = app.start_stop_btn  # Store reference for the tab changed handler in app_logic.py
-    ttk.Button(frame, text=app.ui_lang.get_label("hide_source_btn"), command=app.toggle_source_visibility, width=30).grid(row=4, column=0, padx=5, pady=5, sticky="w")
-    ttk.Button(frame, text=app.ui_lang.get_label("hide_target_btn"), command=app.toggle_target_visibility, width=30).grid(row=5, column=0, padx=5, pady=5, sticky="w")
-    ttk.Button(frame, text=app.ui_lang.get_label("clear_cache_btn"), command=app.clear_cache, width=30).grid(row=6, column=0, padx=5, pady=5, sticky="w")
-    ttk.Button(frame, text=app.ui_lang.get_label("clear_debug_log_btn"), command=app.clear_debug_log, width=30).grid(row=7, column=0, padx=5, pady=5, sticky="w")
+    ttk.Button(frame, text=app.ui_lang.get_label("hide_source_btn"), command=app.toggle_source_visibility, width=30).grid(row=5, column=0, padx=5, pady=5, sticky="w")
+    ttk.Button(frame, text=app.ui_lang.get_label("hide_target_btn"), command=app.toggle_target_visibility, width=30).grid(row=6, column=0, padx=5, pady=5, sticky="w")
+    ttk.Button(frame, text=app.ui_lang.get_label("clear_cache_btn"), command=app.clear_cache, width=30).grid(row=7, column=0, padx=5, pady=5, sticky="w")
+    ttk.Button(frame, text=app.ui_lang.get_label("clear_debug_log_btn"), command=app.clear_debug_log, width=30).grid(row=8, column=0, padx=5, pady=5, sticky="w")
     
     # Debug log toggle button
     if app.debug_logging_enabled_var.get():
@@ -95,21 +96,27 @@ def create_main_tab(app):
     else:
         initial_debug_toggle_text = app.ui_lang.get_label("toggle_debug_log_enable_btn")
     app.debug_log_toggle_btn = ttk.Button(frame, text=initial_debug_toggle_text, command=app.toggle_debug_logging, width=30)
-    app.debug_log_toggle_btn.grid(row=8, column=0, padx=5, pady=5, sticky="w")
+    app.debug_log_toggle_btn.grid(row=9, column=0, padx=5, pady=5, sticky="w")
+
+    app.toggle_click_through_btn = ttk.Button(frame, text=app.ui_lang.get_label("toggle_click_through_btn", "Enable Click-through"), command=app.toggle_click_through, width=30)
+    app.toggle_click_through_btn.grid(row=10, column=0, padx=5, pady=5, sticky="w")
+
+    app.selected_windows_frame = ttk.LabelFrame(frame, text=app.ui_lang.get_label("selected_windows_title", "Selected Windows"))
+    app.selected_windows_frame.grid(row=11, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
 
     if app.KEYBOARD_AVAILABLE:
         shortcuts_frame = ttk.LabelFrame(frame, text=app.ui_lang.get_label("keyboard_shortcuts_title"))
-        shortcuts_frame.grid(row=9, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
+        shortcuts_frame.grid(row=12, column=0, columnspan=2, padx=5, pady=10, sticky="ew")
         ttk.Label(shortcuts_frame, text="~ : " + app.ui_lang.get_label("shortcut_start_stop", "Start/Stop Translation")).grid(row=0, column=0, padx=10, pady=2, sticky="w")
         ttk.Label(shortcuts_frame, text="Alt+1 : " + app.ui_lang.get_label("shortcut_toggle_source", "Toggle Source Window Visibility")).grid(row=1, column=0, padx=10, pady=2, sticky="w")
         ttk.Label(shortcuts_frame, text="Alt+2 : " + app.ui_lang.get_label("shortcut_toggle_target", "Toggle Translation Window Visibility")).grid(row=2, column=0, padx=10, pady=2, sticky="w")
         ttk.Label(shortcuts_frame, text="Alt+S : " + app.ui_lang.get_label("shortcut_save_settings", "Save Settings")).grid(row=3, column=0, padx=10, pady=2, sticky="w")
         ttk.Label(shortcuts_frame, text="Alt+C : " + app.ui_lang.get_label("shortcut_clear_cache", "Clear Cache")).grid(row=4, column=0, padx=10, pady=2, sticky="w")
         ttk.Label(shortcuts_frame, text="Alt+L : " + app.ui_lang.get_label("shortcut_clear_log", "Clear Debug Log")).grid(row=5, column=0, padx=10, pady=(2,8), sticky="w")
-        status_row = 10
+        status_row = 11
         app.status_label = ttk.Label(frame, text=app.ui_lang.get_label("status_ready_hotkey"))
     else:
-        status_row = 9
+        status_row = 10
         app.status_label = ttk.Label(frame, text=app.ui_lang.get_label("status_ready"))
     
     app.status_label.grid(row=status_row, column=0, columnspan=2, padx=5, pady=5, sticky="w")
@@ -1274,6 +1281,17 @@ def create_settings_tab(app):
     
     ttk.Label(file_cache_frame_outer, text=f"{app.ui_lang.get_label('cache_files_label')} {os.path.basename(app.google_cache_file)}, {os.path.basename(app.deepl_cache_file)}, {os.path.basename(app.gemini_cache_file)}, openai_cache.txt", wraplength=400).grid(row=5, column=0, columnspan=2, padx=5, pady=2, sticky="w")
     ttk.Button(file_cache_frame_outer, text=app.ui_lang.get_label("clear_caches_btn"), command=app.clear_file_caches).grid(row=6, column=0, padx=5, pady=5, sticky="w")
+    current_row += 1
+
+    hover_frame = ttk.LabelFrame(frame, text=app.ui_lang.get_label("hover_translation_title", "Hover Translation"))
+    hover_frame.grid(row=current_row, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
+    ttk.Checkbutton(hover_frame, text=app.ui_lang.get_label("enable_hover_translation_checkbox", "Enable Hover Translation"), variable=app.enable_hover_translation_var).grid(row=0, column=0, padx=5, pady=2, sticky="w")
+
+    ttk.Label(hover_frame, text=app.ui_lang.get_label("hover_delay_label", "Hover Delay (ms)")).grid(row=1, column=0, padx=5, pady=2, sticky="w")
+    hover_delay_slider = ttk.Scale(hover_frame, from_=100, to=2000, orient=tk.HORIZONTAL, variable=app.hover_delay_var, length=200)
+    hover_delay_slider.grid(row=1, column=1, padx=5, pady=2, sticky="w")
+    hover_delay_label = ttk.Label(hover_frame, textvariable=app.hover_delay_var)
+    hover_delay_label.grid(row=1, column=2, padx=5, pady=2, sticky="w")
     current_row += 1
     
     button_frame_outer = ttk.Frame(frame)

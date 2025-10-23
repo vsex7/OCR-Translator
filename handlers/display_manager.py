@@ -34,20 +34,26 @@ class DisplayManager:
         self.current_logical_text = ""
         self.current_language_code = None
     
-    def update_translation_text(self, text_to_display):
+    def update_translation_text(self, text_to_display, hwnd=None):
         """Updates the translation text overlay with new content
         
         Args:
             text_to_display: Text content to display in the overlay
+            hwnd: The window handle of the source window, to identify the correct target overlay.
         """
         # Check if the target overlay and text widget references are valid
-        if not self.app.target_overlay or not hasattr(self.app.target_overlay, 'winfo_exists') or not self.app.target_overlay.winfo_exists() or \
-           not self.app.translation_text or not hasattr(self.app.translation_text, 'winfo_exists') or not self.app.translation_text.winfo_exists():
-            # log_debug("Update translation skipped: Target overlay or text widget invalid/destroyed.") # Can be verbose
-            return
+        if hwnd is None:
+            # Fallback to single overlay mode if no hwnd is provided
+            if not self.app.target_overlay or not hasattr(self.app.target_overlay, 'winfo_exists') or not self.app.target_overlay.winfo_exists() or \
+               not self.app.translation_text or not hasattr(self.app.translation_text, 'winfo_exists') or not self.app.translation_text.winfo_exists():
+                return
+        else:
+            if hwnd not in self.app.target_overlays or not hasattr(self.app.target_overlays[hwnd], 'winfo_exists') or not self.app.target_overlays[hwnd].winfo_exists() or \
+               hwnd not in self.app.translation_texts or not hasattr(self.app.translation_texts[hwnd], 'winfo_exists') or not self.app.translation_texts[hwnd].winfo_exists():
+                return
             
         # Schedule the actual update via the main thread's event loop
-        self.app.root.after(0, self._update_translation_text_on_main_thread, text_to_display)
+        self.app.root.after(0, self._update_translation_text_on_main_thread, text_to_display, hwnd)
 
     def manually_wrap_and_process_rtl(self, widget, logical_text, language_code, retry_count=0):
         """
@@ -223,25 +229,28 @@ class DisplayManager:
                     retry_count=0  # Reset retry count for resize events
                 )
 
-    def _update_translation_text_on_main_thread(self, text_content_main_thread):
+    def _update_translation_text_on_main_thread(self, text_content_main_thread, hwnd=None):
         """Updates the translation text widget on the main thread with proper BiDi support
         
         Args:
             text_content_main_thread: Text content to display
+            hwnd: The window handle of the source window, to identify the correct target overlay.
         """
-        if not self.app.target_overlay or not self.app.target_overlay.winfo_exists() or \
-           not self.app.translation_text:
+        target_overlay = self.app.target_overlays.get(hwnd) if hwnd else self.app.target_overlay
+        translation_text = self.app.translation_texts.get(hwnd) if hwnd else self.app.translation_text
+
+        if not target_overlay or not target_overlay.winfo_exists() or not translation_text:
             return
 
         try:
             if self.app.is_running:
-                if not self.app.target_overlay.winfo_viewable():
-                    self.app.target_overlay.show() 
+                if not target_overlay.winfo_viewable():
+                    target_overlay.show()
                 else:
-                    if hasattr(self.app.target_overlay, 'attributes'):
-                        self.app.target_overlay.attributes("-topmost", True)
+                    if hasattr(target_overlay, 'attributes'):
+                        target_overlay.attributes("-topmost", True)
                     else:
-                        self.app.target_overlay.raise_()
+                        target_overlay.raise_()
 
             new_text_to_display = text_content_main_thread.strip() if text_content_main_thread else ""
             log_debug(f"DisplayManager: Processing text for display: '{new_text_to_display}'")
@@ -257,7 +266,7 @@ class DisplayManager:
             self.current_logical_text = new_text_to_display
             self.current_language_code = target_lang_code
             
-            if hasattr(self.app.translation_text, 'set_rtl_text'):
+            if hasattr(translation_text, 'set_rtl_text'):
                 # PySide text widget
                 log_debug(f"DisplayManager: Using PySide RTL text display for language: {target_lang_code}")
                 text_color = self.app.target_text_colour_var.get()
@@ -265,14 +274,14 @@ class DisplayManager:
                 font_type = self.app.target_font_type_var.get()
                 bg_color = self.app.target_colour_var.get()
                 
-                self.app.translation_text.set_rtl_text(
+                translation_text.set_rtl_text(
                     new_text_to_display, 
                     target_lang_code, 
                     bg_color, 
                     text_color, 
                     font_size
                 )
-                self.app.translation_text.configure(font=(font_type, font_size))
+                translation_text.configure(font=(font_type, font_size))
             else:
                 # Fallback to tkinter handling
                 log_debug(f"DisplayManager: Using tkinter text widget with RTL processor (fallback)")
@@ -280,41 +289,41 @@ class DisplayManager:
                 
                 if is_rtl and new_text_to_display:
                     log_debug(f"DisplayManager: Using manual wrapping for RTL text - Language: {target_lang_code}")
-                    if not hasattr(self.app.translation_text, '_rtl_processed_once'):
-                        self.app.translation_text._rtl_processed_once = True
+                    if not hasattr(translation_text, '_rtl_processed_once'):
+                        translation_text._rtl_processed_once = True
                         log_debug(f"DisplayManager: First-time RTL processing with delay for language: {target_lang_code}")
                         self.app.root.after(100, lambda: self.manually_wrap_and_process_rtl(
-                            self.app.translation_text, new_text_to_display, target_lang_code, retry_count=0))
+                            translation_text, new_text_to_display, target_lang_code, retry_count=0))
                     else:
                         log_debug(f"DisplayManager: Subsequent RTL processing for language: {target_lang_code}")
-                        self.manually_wrap_and_process_rtl(self.app.translation_text, new_text_to_display, target_lang_code)
+                        self.manually_wrap_and_process_rtl(translation_text, new_text_to_display, target_lang_code)
                 else:
                     log_debug(f"DisplayManager: Using standard processing for LTR text")
-                    self.app.translation_text.config(state=tk.NORMAL) 
-                    self.app.translation_text.delete(1.0, tk.END)     
-                    self.app.translation_text.insert(tk.END, new_text_to_display)
+                    translation_text.config(state=tk.NORMAL)
+                    translation_text.delete(1.0, tk.END)
+                    translation_text.insert(tk.END, new_text_to_display)
                     
                     if RTL_PROCESSOR_AVAILABLE:
-                        RTLTextProcessor.configure_tkinter_widget_for_rtl(self.app.translation_text, False)
+                        RTLTextProcessor.configure_tkinter_widget_for_rtl(translation_text, False)
                     else:
-                        self.app.translation_text.tag_configure("ltr", justify='left')
-                        self.app.translation_text.tag_add("ltr", "1.0", "end")
+                        translation_text.tag_configure("ltr", justify='left')
+                        translation_text.tag_add("ltr", "1.0", "end")
                     
-                    self.app.translation_text.config(state=tk.DISABLED)
+                    translation_text.config(state=tk.DISABLED)
                 
-                if hasattr(self.app.translation_text, 'see'):
-                    self.app.translation_text.see("1.0")
+                if hasattr(translation_text, 'see'):
+                    translation_text.see("1.0")
                 
         except tk.TclError as e_uttomt: 
             log_debug(f"Error updating translation text widget (TclError, likely destroyed): {e_uttomt}")
         except Exception as e_uttomt_gen:
             log_debug(f"Unexpected error updating translation text: {type(e_uttomt_gen).__name__} - {e_uttomt_gen}")
-            if (self.app.translation_text and 
-                hasattr(self.app.translation_text, 'config') and 
-                hasattr(self.app.translation_text, 'winfo_exists') and 
-                self.app.translation_text.winfo_exists()): 
+            if (translation_text and
+                hasattr(translation_text, 'config') and
+                hasattr(translation_text, 'winfo_exists') and
+                translation_text.winfo_exists()):
                 try: 
-                    self.app.translation_text.config(state=tk.DISABLED)
+                    translation_text.config(state=tk.DISABLED)
                 except tk.TclError: 
                     pass
 
