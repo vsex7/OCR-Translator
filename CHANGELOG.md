@@ -5,6 +5,11 @@ All notable changes to the Game-Changing Translator project will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.1] - 2025-10-23
+
+### Fixed
+- **UI Event Handler Duplication**: Fixed a bug where changing the UI language would cause duplicate event handlers to be bound, leading to potential performance degradation over time.
+
 ## [3.7.0] - 2025-10-04
 
 ### Added
