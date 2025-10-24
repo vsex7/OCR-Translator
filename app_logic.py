@@ -47,6 +47,7 @@ from handlers import (
 )
 from handlers.gemini_models_manager import GeminiModelsManager
 from handlers.openai_models_manager import OpenAIModelsManager
+from handlers.input_hook_manager import InputHookManager
 
 KEYBOARD_AVAILABLE = False
 try:
@@ -347,7 +348,7 @@ class GameChangingTranslator:
         self.target_font_type_var = tk.StringVar(value=self.config['Settings'].get('target_font_type', 'Arial'))
         self.target_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_opacity', '0.15')))
         self.target_text_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_text_opacity', '1.0')))
-        self.overlay_display_mode_var = tk.StringVar(value=self.config['Settings'].get('overlay_display_mode', 'target_only'))
+        self.input_field_translation_enabled_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'input_field_translation_enabled', fallback=False))
 
         # Initialize OCR model display variable here to ensure it persists across UI rebuilds
         self.ocr_model_display_var = tk.StringVar()
@@ -377,6 +378,7 @@ class GameChangingTranslator:
         
         # Initialize Handlers
         # self.cache_manager = CacheManager(self)
+        self.input_hook_manager = InputHookManager(self)
         self.configuration_handler = ConfigurationHandler(self)
         self.display_manager = DisplayManager(self)
         self.hotkey_handler = HotkeyHandler(self)
@@ -463,7 +465,7 @@ class GameChangingTranslator:
         self.target_font_type_var.trace_add("write", self.settings_changed_callback)
         self.target_opacity_var.trace_add("write", self.settings_changed_callback)
         self.target_text_opacity_var.trace_add("write", self.settings_changed_callback)
-        self.overlay_display_mode_var.trace_add("write", self.settings_changed_callback)
+        self.input_field_translation_enabled_var.trace_add("write", lambda *args: self.input_hook_manager.toggle_listener())
         self.num_beams_var.trace_add("write", self.settings_changed_callback)
         self.marian_model_var.trace_add("write", self.settings_changed_callback) 
         self.gui_language_var.trace_add("write", self.settings_changed_callback)
@@ -682,6 +684,8 @@ class GameChangingTranslator:
         
         # Refresh API statistics for the new API Usage tab
         self.root.after_idle(lambda: self._delayed_api_stats_refresh())
+
+        self.input_hook_manager.toggle_listener()
 
     def _delayed_api_stats_refresh(self):
         """Delayed API statistics refresh to ensure GUI is fully ready."""

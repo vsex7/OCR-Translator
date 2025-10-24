@@ -1,4 +1,5 @@
 from logger import log_debug
+import keyboard
 
 class HotkeyHandler:
     """Handles keyboard shortcuts and hotkey registration"""
@@ -10,14 +11,12 @@ class HotkeyHandler:
             app: The main GameChangingTranslator application instance
         """
         self.app = app
+        self.undo_hotkey = None
     
     def setup_hotkeys(self):
         """Registers all keyboard shortcuts if the keyboard module is available"""
         if self.app.KEYBOARD_AVAILABLE:
             try:
-                # We need to explicitly import keyboard here since it's optional
-                import keyboard
-                
                 # Add suppress=True to ensure hotkeys work when app is not in focus
                 keyboard.add_hotkey('`', self.toggle_translation_hotkey, suppress=True)
                 keyboard.add_hotkey('alt+1', self.toggle_source_visibility_hotkey, suppress=True)
@@ -30,6 +29,23 @@ class HotkeyHandler:
                 log_debug(f"Error setting up keyboard shortcuts: {e_hk}")
         else:
             log_debug("Keyboard library not available. Hotkeys disabled.")
+
+    def register_undo_hotkey(self):
+        if self.app.KEYBOARD_AVAILABLE and self.undo_hotkey is None:
+            try:
+                self.undo_hotkey = keyboard.add_hotkey('ctrl+z', self.undo_translation_hotkey, suppress=True)
+                log_debug("Undo hotkey registered.")
+            except Exception as e:
+                log_debug(f"Error registering undo hotkey: {e}")
+
+    def unregister_undo_hotkey(self):
+        if self.app.KEYBOARD_AVAILABLE and self.undo_hotkey is not None:
+            try:
+                keyboard.remove_hotkey(self.undo_hotkey)
+                self.undo_hotkey = None
+                log_debug("Undo hotkey unregistered.")
+            except Exception as e:
+                log_debug(f"Error unregistering undo hotkey: {e}")
     
     def toggle_translation_hotkey(self):
         """Hotkey callback for toggling translation on/off"""
@@ -78,3 +94,11 @@ class HotkeyHandler:
                 self.app.root.after(0, self.app.clear_debug_log)
         except Exception as e:
             log_debug(f"Error in clear_debug_log_hotkey: {e}")
+
+    def undo_translation_hotkey(self):
+        """Hotkey callback for undoing the last input field translation"""
+        try:
+            if self.app.root.winfo_exists() and self.app.input_hook_manager:
+                self.app.root.after(0, self.app.input_hook_manager.undo_translation)
+        except Exception as e:
+            log_debug(f"Error in undo_translation_hotkey: {e}")

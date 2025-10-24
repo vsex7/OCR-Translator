@@ -66,9 +66,7 @@ if PYSIDE6_AVAILABLE:
             self._bg_color = "#2c3e50"
             self._fg_color = "#ecf0f1"
             self._current_text = ""
-            self._current_source_text = ""
             self._current_language = None
-            self._display_mode = "target_only"
             self.setup_widget()
 
         def setup_widget(self):
@@ -91,78 +89,75 @@ if PYSIDE6_AVAILABLE:
             # Don't enforce line-height; keep margins/padding minimal here
             doc = self.document()
             doc.setDefaultStyleSheet("""
-                div, p, table, tr, td {
+                div {
                     margin: 0;
                     padding: 0;
                 }
             """)
 
-        def set_rtl_text(self, text: str, source_text: str, display_mode: str, language_code: str = None, bg_color: str = "#2c3e50", text_color: str = "#ecf0f1", font_size: int = 14):
+        def set_rtl_text(self, text: str, language_code: str = None, bg_color: str = "#2c3e50", text_color: str = "#ecf0f1", font_size: int = 14):
             """Set text content while respecting RTL/LTR and applying inline HTML."""
-            # Store current state for color updates and re-rendering
+            # Store current state for color updates
             self._current_text = text
-            self._current_source_text = source_text
             self._current_language = language_code
             self._bg_color = bg_color
-            self._display_mode = display_mode
+            # self._fg_color = text_color
             
-            # Normalize whitespace while preserving intentional line breaks
-            processed = ' '.join(text.replace('\r\n', '\n').replace('\r', '\n').split())
-            processed_source = ' '.join(source_text.replace('\r\n', '\n').replace('\r', '\n').split())
+            # Normalize whitespace WHILE PRESERVING intentional line breaks (SURGICAL FIX)
+            processed = text.replace('\r\n', '\n').replace('\r', '\n')
+            # Split by lines, clean whitespace within each line, then rejoin with newlines
+            lines = processed.split('\n')
+            cleaned_lines = []
+            for line in lines:
+                # Clean excessive whitespace within each line, but preserve the line structure
+                cleaned_line = ' '.join(line.split())  # This only affects whitespace within the line
+                cleaned_lines.append(cleaned_line)
+            processed = '\n'.join(cleaned_lines)
 
-            # Determine direction
-            is_rtl = self._is_rtl_language(language_code) if language_code else self._detect_rtl_text(processed)
+            # Determine direction heuristically if language_code not provided
+            is_rtl = False
+            if language_code:
+                is_rtl = self._is_rtl_language(language_code)
+            else:
+                is_rtl = self._detect_rtl_text(processed)
 
-            # Optionally reshape Arabic
-            if RESHAPER_AVAILABLE and is_rtl:
+            # Optionally reshape Arabic if available and requested
+            if RESHAPER_AVAILABLE and (not language_code or language_code.lower().startswith(('ar', 'fa', 'ur', 'ku'))):
                 try:
                     processed = arabic_reshaper.reshape(processed)
-                    processed = get_display(processed)
                 except Exception:
                     pass
 
-            # Convert newlines to HTML line breaks
+            # CRITICAL FIX: Convert newlines to HTML line breaks for proper dialog formatting
+            # HTML ignores \n characters, so we need to convert them to <br> tags
             html_processed = processed.replace('\n', '<br>')
-            html_source = processed_source.replace('\n', '<br>')
 
-            # Build the HTML content based on the display mode
-            final_html = ""
-            if display_mode == "source_target":
-                final_html = f"""
-                <table width="100%" style="font-family: '{self.font().family()}'; font-size: {font_size}pt; color: {text_color};">
-                    <tr>
-                        <td width="50%" style="vertical-align:top; padding-right: 10px; border-right: 1px solid #555;">{html_source}</td>
-                        <td width="50%" style="vertical-align:top; padding-left: 10px;">{html_processed}</td>
-                    </tr>
-                </table>
-                """
-            elif display_mode == "overlay":
-                final_html = f"""
-                <div style="position: relative; font-family: '{self.font().family()}'; font-size: {font_size}pt;">
-                    <div style="color: transparent;">{html_source}</div>
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; color: {text_color};">{html_processed}</div>
-                </div>
-                """
-            else: # target_only
-                align = "right" if is_rtl else "left"
-                direction = "rtl" if is_rtl else "ltr"
-                final_html = f"""<div style="text-align: {align}; direction: {direction}; font-family: '{self.font().family()}'; font-size: {font_size}pt; color: {text_color};">
+            if is_rtl:
+                self.setLayoutDirection(Qt.RightToLeft)
+                html_text = f"""<div style="text-align: right; direction: rtl; font-family: '{self.font().family()}'; font-size: {font_size}pt; color: {self._fg_color};">
+                {html_processed}
+                </div>"""
+            else:
+                self.setLayoutDirection(Qt.LeftToRight)
+                html_text = f"""<div style="text-align: left; direction: ltr; font-family: '{self.font().family()}'; font-size: {font_size}pt; color: {self._fg_color};">
                 {html_processed}
                 </div>"""
 
-            self.setHtml(final_html)
+            # Use HTML insertion for richer control
+            self.setHtml(html_text)
 
-            # Ensure block alignment matches direction for target_only mode
-            if display_mode == "target_only":
-                cursor = self.textCursor()
-                cursor.select(QTextCursor.Document)
-                block_fmt = QTextBlockFormat()
-                block_fmt.setAlignment(Qt.AlignRight if is_rtl else Qt.AlignLeft)
-                cursor.mergeBlockFormat(block_fmt)
-                cursor.clearSelection()
-                cursor.movePosition(QTextCursor.Start)
-                self.setTextCursor(cursor)
-
+            # Ensure block alignment matches direction
+            cursor = self.textCursor()
+            cursor.select(QTextCursor.Document)
+            block_fmt = QTextBlockFormat()
+            if is_rtl:
+                block_fmt.setAlignment(Qt.AlignRight | Qt.AlignAbsolute)
+            else:
+                block_fmt.setAlignment(Qt.AlignLeft | Qt.AlignAbsolute)
+            cursor.mergeBlockFormat(block_fmt)
+            cursor.clearSelection()
+            cursor.movePosition(QTextCursor.Start)
+            self.setTextCursor(cursor)
 
         def _is_rtl_language(self, lang_code: str) -> bool:
             if not lang_code:
@@ -184,38 +179,108 @@ if PYSIDE6_AVAILABLE:
         def config(self, **kwargs):
             """Enhanced config method with full tkinter Text widget compatibility"""
             if 'state' in kwargs:
-                self.setReadOnly('DISABLED' in str(kwargs['state']).upper())
+                state_val = kwargs['state']
+                if 'DISABLED' in str(state_val).upper():
+                    self.setReadOnly(True)
+                elif 'NORMAL' in str(state_val).upper():
+                    self.setReadOnly(False)
             
+            # Handle background color (bg parameter)
             if 'bg' in kwargs:
-                self._bg_color = kwargs['bg']
-                self.setStyleSheet(f"background-color: transparent; border: none; padding: {self.parent()._text_padding[1]}px {self.parent()._text_padding[0]}px;")
+                bg_color = kwargs['bg']
+                try:
+                    # Store the intended background color for text re-rendering, but
+                    # keep the widget itself transparent for the split-opacity effect.
+                    self._bg_color = bg_color
 
+                    # Extract existing padding if present
+                    current_style = self.styleSheet()
+                    padding_match = re.search(r'padding:\s*([^;]+);', current_style)
+                    padding = padding_match.group(1) if padding_match else "5px"
+
+                    # Force background to be transparent
+                    new_style = f"""
+                        QTextEdit {{
+                            background-color: transparent;
+                            border: none;
+                            padding: {padding};
+                        }}
+                    """
+                    self.setStyleSheet(new_style)
+                    log_debug(f"PySide RTLTextDisplay: Stored bg_color {bg_color}, set background to transparent.")
+                except Exception as e:
+                    log_debug(f"Error setting PySide text background color: {e}")
+
+            # Handle foreground/text color (fg parameter)
             if 'fg' in kwargs:
-                self._fg_color = kwargs['fg']
-                self.set_rtl_text(
-                    self._current_text, self._current_source_text, self._display_mode, self._current_language,
-                    self._bg_color, self._fg_color, self.font().pointSize()
-                )
+                fg_color = kwargs['fg']
+                try:
+                    # Store text color for later use in HTML rendering
+                    self._fg_color = fg_color
 
+                    # Re-render current text with new color if text exists
+                    if hasattr(self, '_current_text') and hasattr(self, '_current_language'):
+                        self.set_rtl_text(
+                            self._current_text,
+                            self._current_language,
+                            getattr(self, '_bg_color', '#2c3e50'),
+                            fg_color,
+                            self.font().pointSize()
+                        )
+                    log_debug(f"PySide RTLTextDisplay: Updated text color to {fg_color}")
+                except Exception as e:
+                    log_debug(f"Error setting PySide text foreground color: {e}")
+
+            # Handle font changes (font parameter)
             if 'font' in kwargs:
                 font_spec = kwargs['font']
-                if isinstance(font_spec, tuple) and len(font_spec) >= 2:
-                    qfont = QFont(font_spec[0], int(font_spec[1]))
-                    self.setFont(qfont)
-                    self.set_rtl_text(
-                        self._current_text, self._current_source_text, self._display_mode, self._current_language,
-                        self._bg_color, self._fg_color, int(font_spec[1])
-                    )
+                try:
+                    if isinstance(font_spec, tuple) and len(font_spec) >= 2:
+                        # Font specified as tuple (family, size, *style)
+                        font_family = font_spec[0]
+                        font_size = int(font_spec[1])
+
+                        # Update the widget font
+                        qfont = QFont(font_family, font_size)
+                        self.setFont(qfont)
+
+                        # Re-render current text with new font if text exists
+                        if hasattr(self, '_current_text') and hasattr(self, '_current_language'):
+                            self.set_rtl_text(
+                                self._current_text,
+                                self._current_language,
+                                getattr(self, '_bg_color', '#2c3e50'),
+                                getattr(self, '_fg_color', '#ecf0f1'),
+                                font_size
+                            )
+                        log_debug(f"PySide RTLTextDisplay: Updated font to {font_family} {font_size}")
+                    else:
+                        log_debug(f"Unsupported font specification format: {font_spec}")
+                except Exception as e:
+                    log_debug(f"Error setting PySide text font: {e}")
 
         def configure(self, **kwargs):
+            """Alias for config method to match tkinter Text widget interface exactly"""
             return self.config(**kwargs)
 
-        def get(self, start=None, end=None): return self.toPlainText()
-        def delete(self, start=None, end=None): self.clear()
-        def insert(self, index, text): self.setPlainText(text)
-        def see(self, index): self.moveCursor(QTextCursor.Start)
+        def get(self, start=None, end=None):
+            return self.toPlainText()
+
+        def delete(self, start=None, end=None):
+            self.clear()
+
+        def insert(self, index, text):
+            self.setPlainText(text)
+
+        def see(self, index):
+            cursor = self.textCursor()
+            cursor.movePosition(QTextCursor.Start)
+            self.setTextCursor(cursor)
+
 
     class VisualTopBar(QWidget):
+        """A purely visual draggable top bar that preserves the SizeAll cursor."""
+
         def __init__(self, parent=None, height: int = 10):
             super().__init__(parent)
             self.setFixedHeight(int(height))
@@ -225,24 +290,39 @@ if PYSIDE6_AVAILABLE:
             self._drag_offset = QPoint()
 
         def _global_pos(self, event):
-            try: return event.globalPosition().toPoint()
-            except AttributeError: return event.globalPos()
+            try:
+                # Qt6
+                return event.globalPosition().toPoint()
+            except AttributeError:
+                return event.globalPos()
 
         def enterEvent(self, event):
+            # Keep SizeAll cursor when hovering the top bar
             self.setCursor(Qt.SizeAllCursor)
             super().enterEvent(event)
 
         def leaveEvent(self, event):
-            try: self.window().unsetCursor()
-            except Exception: pass
+            # Let parent decide cursor when leaving; but ensure we don't leave it stale
+            try:
+                self.window().unsetCursor()
+            except Exception:
+                pass
             super().leaveEvent(event)
 
         def mousePressEvent(self, event):
             if event.button() == Qt.LeftButton:
                 win = self.window().windowHandle()
-                if win is not None and hasattr(win, 'startSystemMove'):
-                    win.startSystemMove()
-                else:
+                used_system_move = False
+                if win is not None:
+                    try:
+                        # Prefer native system move if available (Qt 6)
+                        win.startSystemMove()
+                        used_system_move = True
+                    except Exception:
+                        used_system_move = False
+
+                if not used_system_move:
+                    # Manual fallback dragging
                     self._dragging = True
                     self._drag_offset = self._global_pos(event) - self.window().frameGeometry().topLeft()
             super().mousePressEvent(event)
@@ -259,167 +339,482 @@ if PYSIDE6_AVAILABLE:
 
 
     class PySideTranslationOverlay(QMainWindow):
+        """PySide translation overlay window with native OS resize/move handling."""
+
         def __init__(self, initial_geometry, bg_color, title="Translation",
-                     top_bar_height: int = 10, text_padding: tuple = (5, 5),
-                     font_size: int = 14, font_family: str = "Arial",
-                     border_px: int = 0, opacity: float = 0.85, is_movable: bool = True, parent=None):
+                     top_bar_height: int = 10,
+                     text_padding: tuple = (5, 5),
+                     font_size: int = 14,
+                     font_family: str = "Arial",
+                     border_px: int = 0,
+                     opacity: float = 0.85,
+                     parent=None):
             super().__init__(parent)
             self.text_widget = None
             self.bg_color = bg_color
-            self.parent = parent
 
+            # Visual parameters (stored)
             self._top_bar_height = int(top_bar_height)
-            self._text_padding = (int(text_padding[0]), int(text_padding[1]))
+            # Expect text_padding as (pad_x, pad_y)
+            try:
+                self._text_padding = (int(text_padding[0]), int(text_padding[1]))
+            except Exception:
+                self._text_padding = (5, 5)
             self._font_size = int(font_size)
             self._font_family = font_family
             self._border_px = int(border_px)
-            self._opacity = float(opacity)
-            self._is_movable = is_movable
+            try:
+                self._opacity = float(opacity)
+            except Exception:
+                self._opacity = 0.85
 
+            # Native hit-test constants for Windows
             if sys.platform == "win32":
-                self.HTLEFT, self.HTRIGHT, self.HTTOP, self.HTBOTTOM = 10, 11, 12, 15
-                self.HTTOPLEFT, self.HTTOPRIGHT, self.HTBOTTOMLEFT, self.HTBOTTOMRIGHT = 13, 14, 16, 17
+                self.HTLEFT = 10
+                self.HTRIGHT = 11
+                self.HTTOP = 12
+                self.HTTOPLEFT = 13
+                self.HTTOPRIGHT = 14
+                self.HTBOTTOM = 15
+                self.HTBOTTOMLEFT = 16
+                self.HTBOTTOMRIGHT = 17
+                self.HTCAPTION = 2  # kept for reference but not returned
 
             self.setup_window(initial_geometry, bg_color, title)
 
         def setup_window(self, initial_geometry, bg_color, title):
+            """Setup overlay window visuals and layout."""
             self.setWindowTitle(title)
+
+            # Make window frameless and transparent to allow for split opacity
             self.setAttribute(Qt.WA_TranslucentBackground)
-            self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Tool)
+            self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+            self.setWindowFlag(Qt.Tool, True)
+
+            # The main window itself is transparent; opacity is handled by the central widget's background
             self.setStyleSheet("background-color: transparent;")
 
+            # Geometry
             try:
                 x1, y1, x2, y2 = map(int, initial_geometry)
-                self.setGeometry(x1, y1, max(x2 - x1, 100), max(y2 - y1, 50))
-            except Exception: self.setGeometry(200, 200, 300, 200)
+                width = max(x2 - x1, 100)
+                height = max(y2 - y1, 50)
+                self.setGeometry(x1, y1, width, height)
+                log_debug(f"PySide overlay geometry set: {width}x{height}+{x1}+{y1}")
+            except Exception as e:
+                log_debug(f"Error setting PySide overlay geometry {initial_geometry}: {e}. Using default.")
+                self.setGeometry(200, 200, 300, 200)
 
+            # Central widget + layout
             central_widget = QWidget()
             self.setCentralWidget(central_widget)
             layout = QVBoxLayout(central_widget)
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
 
+            # The central widget holds the semi-transparent background and border
             border_css = f"border: {self._border_px}px solid {self._adjust_color_brightness(bg_color, -20)};" if self._border_px > 0 else "border: none;"
-            central_widget.setStyleSheet(f"QWidget {{ background-color: {self._hex_to_rgba(bg_color, self._opacity)}; {border_css} }}")
+            semi_transparent_bg = self._hex_to_rgba(bg_color, self._opacity)
 
-            if self._is_movable:
-                self.top_bar = VisualTopBar(self, height=self._top_bar_height)
-                self.top_bar.setStyleSheet("background-color: transparent; border: none;")
-                layout.addWidget(self.top_bar)
+            central_widget.setStyleSheet(f"""
+                QWidget {{
+                    background-color: {semi_transparent_bg};
+                    {border_css}
+                }}
+            """)
 
-            self.text_widget = RTLTextDisplay(self)
-            self.text_widget.setFont(QFont(self._font_family, self._font_size))
-            self.text_widget.setStyleSheet(f"background-color: transparent; border: none; padding: {self._text_padding[1]}px {self._text_padding[0]}px;")
+            # Top bar (purely visual) using the requested height
+            self.top_bar = VisualTopBar(self, height=self._top_bar_height)
+            # Top bar is transparent to show the central widget's background
+            self.top_bar.setStyleSheet("""
+                QWidget {
+                    background-color: transparent;
+                    border: none;
+                }
+            """)
+            layout.addWidget(self.top_bar)
+
+            # Text display
+            self.text_widget = RTLTextDisplay()
+            # Set requested font and size
+            try:
+                qfont = QFont(self._font_family, self._font_size)
+                self.text_widget.setFont(qfont)
+            except Exception:
+                pass
+
+            pad_x, pad_y = self._text_padding
+            # Set padding and ensure background is transparent for the text widget
+            self.text_widget.setStyleSheet(f"""
+                QTextEdit {{
+                    background-color: transparent;
+                    border: none;
+                    padding: {pad_y}px {pad_x}px; /* top/bottom left/right */
+                }}
+            """)
             layout.addWidget(self.text_widget)
 
-        def _hex_to_rgba(self, hex, opacity):
-            hex = hex.lstrip('#')
-            r, g, b = tuple(int(hex[i:i+2], 16) for i in (0, 2, 4))
-            return f"rgba({r}, {g}, {b}, {opacity})"
+        def _hex_to_rgba(self, hex_color, opacity):
+            """Convert #RRGGBB hex to rgba(r,g,b,a) string for stylesheets."""
+            try:
+                hex_color = hex_color.lstrip('#')
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                return f"rgba({r}, {g}, {b}, {opacity})"
+            except Exception:
+                # Fallback if color format is invalid
+                return hex_color
 
-        def _adjust_color_brightness(self, hex, adj):
-            hex = hex.lstrip('#')
-            r, g, b = (int(hex[i:i+2], 16) for i in (0, 2, 4))
-            r, g, b = (max(0, min(255, c + adj)) for c in (r, g, b))
-            return f"#{r:02x}{g:02x}{b:02x}"
+        def _adjust_color_brightness(self, hex_color, adjustment):
+            """Adjust hex color brightness by a signed integer amount (-255.255)."""
+            try:
+                hex_color = hex_color.lstrip('#')
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                r = max(0, min(255, r + adjustment))
+                g = max(0, min(255, g + adjustment))
+                b = max(0, min(255, b + adjustment))
+                return f"#{r:02x}{g:02x}{b:02x}"
+            except Exception:
+                return hex_color
 
-        def show_translation(self, text: str, source_text: str, language_code: str = None, text_color: str = "#FFFFFF", font_size: int = None):
-            if self.text_widget:
-                display_mode = self.parent.overlay_display_mode_var.get()
-                self.text_widget.set_rtl_text(text, source_text, display_mode, language_code, self.bg_color, self.text_widget._fg_color, font_size or self._font_size)
+        def show_translation(self, text: str, language_code: str = None, text_color: str = "#FFFFFF", font_size: int = None):
+            """Set the translation text in the QTextEdit-compatible widget."""
+            if not self.text_widget:
+                return
+            if font_size is None:
+                font_size = self._font_size
+            # Our RTLTextDisplay provides set_rtl_text which matches tkinter semantics
+            try:
+                # FIX: Use the text widget's own stored foreground color (_fg_color),
+                # which supports the RGBA value for opacity. The 'text_color'
+                # parameter was overwriting it with a solid color.
+                final_text_color = self.text_widget._fg_color
+                self.text_widget.set_rtl_text(text, language_code, self.bg_color, final_text_color, font_size)
+            except Exception as e:
+                log_debug(f"Error setting translation text: {e}")
 
         def update_color(self, new_color, new_opacity=None):
+            """Update colors and optionally opacity for window and child widgets."""
             self.bg_color = new_color
-            if new_opacity is not None: self._opacity = float(new_opacity)
-            if self.centralWidget():
-                border_css = f"border: {self._border_px}px solid {self._adjust_color_brightness(new_color, -20)};" if self._border_px > 0 else "border: none;"
-                self.centralWidget().setStyleSheet(f"QWidget {{ background-color: {self._hex_to_rgba(new_color, self._opacity)}; {border_css} }}")
-            if hasattr(self, 'top_bar'): self.top_bar.setStyleSheet("background-color: transparent; border: none;")
-            if self.text_widget: self.text_widget.config(bg=new_color)
 
-        def update_text_color(self, new_color):
-            if self.text_widget: self.text_widget.config(fg=new_color)
+            # Update opacity if provided
+            if new_opacity is not None:
+                try:
+                    self._opacity = float(new_opacity)
+                    log_debug(f"PySide overlay: Updated opacity to {self._opacity}")
+                except (ValueError, TypeError):
+                    log_debug(f"PySide overlay: Invalid opacity value {new_opacity}, keeping existing")
+
+            # Update the central widget, which holds the visual background
+            semi_transparent_bg = self._hex_to_rgba(new_color, self._opacity)
+            border_css = f"border: {self._border_px}px solid {self._adjust_color_brightness(new_color, -20)};" if self._border_px > 0 else "border: none;"
+
+            if self.centralWidget():
+                self.centralWidget().setStyleSheet(f"""
+                    QWidget {{
+                        background-color: {semi_transparent_bg};
+                        {border_css}
+                    }}
+                """)
+
+            # Ensure top_bar remains transparent to show the central widget's background
+            if self.top_bar:
+                self.top_bar.setStyleSheet("""
+                    QWidget {
+                        background-color: transparent;
+                        border: none;
+                    }
+                """)
+
+            # The text_widget's background must also remain transparent.
+            # Its config method is modified to handle this correctly.
+            if self.text_widget:
+                try:
+                    self.text_widget.config(bg=new_color)
+                    log_debug(f"PySide overlay: Stored new bg color '{new_color}' in text widget.")
+                except Exception as e:
+                    log_debug(f"Error updating PySide text widget color: {e}")
+                    # Fallback to direct stylesheet update if config fails
+                    pad_x, pad_y = self._text_padding
+                    self.text_widget.setStyleSheet(f"""
+                        QTextEdit {{
+                            background-color: transparent;
+                            border: none;
+                            padding: {pad_y}px {pad_x}px;
+                        }}
+                    """)
+
+        def update_text_color(self, new_text_color):
+            """Update text color for the translation display."""
+            if self.text_widget:
+                try:
+                    self.text_widget.config(fg=new_text_color)
+                    log_debug(f"PySide overlay: Updated text color to {new_text_color}")
+                except Exception as e:
+                    log_debug(f"Error updating PySide text color: {e}")
 
         def get_geometry(self):
-            return [self.x(), self.y(), self.x() + self.width(), self.y() + self.height()]
+            """Return geometry as [x1, y1, x2, y2] for compatibility with tkinter overlay code."""
+            try:
+                x = self.x()
+                y = self.y()
+                w = self.width()
+                h = self.height()
+                return [x, y, x + w, y + h]
+            except Exception as e:
+                log_debug(f"Error getting PySide overlay geometry: {e}")
+                return None
 
-        def hide(self): super().hide()
+        def hide(self):
+            super().hide()
+
         def show(self):
             super().show()
             self.raise_()
             self.activateWindow()
+            # Re-apply color to ensure styling is correct after show
             self.update_color(self.bg_color)
-        def toggle_visibility(self): self.setVisible(not self.isVisible())
-        def winfo_exists(self): return True
-        def winfo_viewable(self): return self.isVisible()
-        def destroy(self): self.close()
+
+        def toggle_visibility(self):
+            if self.isVisible():
+                self.hide()
+            else:
+                self.show()
+
+        def winfo_exists(self):
+            return True
+
+        def winfo_viewable(self):
+            try:
+                return self.isVisible()
+            except Exception:
+                return False
+
+        def destroy(self):
+            try:
+                self.close()
+            except Exception:
+                pass
 
         def mouseMoveEvent(self, event):
-            if not self._is_movable: return super().mouseMoveEvent(event)
-            if event.pos().y() <= self._top_bar_height: self.setCursor(Qt.SizeAllCursor)
+            """Handle cursor feedback for move & resize zones.
+
+            The top bar handles moves; here we set SizeAll when within the top bar area,
+            otherwise show appropriate resize cursors. We use a small padding so the visual
+            top bar matches the effective move area.
+            """
+            try:
+                top_bar_area_height = self.top_bar.height() + 2
+            except Exception:
+                top_bar_area_height = 12
+
+            if event.pos().y() <= top_bar_area_height:
+                self.setCursor(Qt.SizeAllCursor)
             else:
                 margin = 4
-                x, y, w, h = event.pos().x(), event.pos().y(), self.width(), self.height()
-                on_left, on_right, on_top, on_bottom = (x < margin), (x > w - margin), (y < margin), (y > h - margin)
-                if (on_top and on_left) or (on_bottom and on_right): self.setCursor(Qt.SizeFDiagCursor)
-                elif (on_top and on_right) or (on_bottom and on_left): self.setCursor(Qt.SizeBDiagCursor)
-                elif on_left or on_right: self.setCursor(Qt.SizeHorCursor)
-                elif on_top or on_bottom: self.setCursor(Qt.SizeVerCursor)
-                else: self.setCursor(Qt.ArrowCursor)
+                x = event.pos().x()
+                y = event.pos().y()
+                w = self.width()
+                h = self.height()
+
+                on_left = x < margin
+                on_right = x > w - margin
+                on_top = y < margin
+                on_bottom = y > h - margin
+
+                if (on_top and on_left) or (on_bottom and on_right):
+                    self.setCursor(Qt.SizeFDiagCursor)
+                elif (on_top and on_right) or (on_bottom and on_left):
+                    self.setCursor(Qt.SizeBDiagCursor)
+                elif on_left or on_right:
+                    self.setCursor(Qt.SizeHorCursor)
+                elif on_top or on_bottom:
+                    self.setCursor(Qt.SizeVerCursor)
+                else:
+                    self.setCursor(Qt.ArrowCursor)
             super().mouseMoveEvent(event)
 
         def nativeEvent(self, eventType, message):
-            if not self._is_movable or sys.platform != "win32" or eventType != "windows_generic_MSG":
+            """Handle Windows native messages for resizing only.
+
+            IMPORTANT: do NOT return HTCAPTION here for the top bar area. Moving is handled
+            by VisualTopBar which preserves SizeAllCursor. Returning HTCAPTION forces Windows
+            to set the Arrow cursor which overrides Qt's cursor.
+
+            This implementation converts the WM_NCHITTEST coordinates (which are in
+            physical pixels on Windows) to Qt logical/device-independent coordinates
+            before calling mapFromGlobal().
+            """
+            if sys.platform != "win32" or eventType != "windows_generic_MSG":
                 return super().nativeEvent(eventType, message)
-            msg = ctypes.wintypes.MSG.from_address(message.__int__())
-            if msg.message == 0x0084: # WM_NCHITTEST
-                x_phys, y_phys = ctypes.c_short(msg.lParam & 0xFFFF).value, ctypes.c_short((msg.lParam >> 16) & 0xFFFF).value
-                scale = self.devicePixelRatioF() or 1.0
-                logical_pt = self.mapFromGlobal(QPoint(int(round(x_phys / scale)), int(round(y_phys / scale))))
 
-                if not self.rect().contains(logical_pt): return super().nativeEvent(eventType, message)
+            try:
+                # Convert WPARAM/LPARAM to MSG structure
+                msg = ctypes.wintypes.MSG.from_address(message.__int__())
+                # WM_NCHITTEST = 0x0084
+                if msg.message == 0x0084:
+                    lparam = msg.lParam
+                    # Extract X and Y as signed shorts (preserves negative coords if any)
+                    x_phys = ctypes.c_short(lparam & 0xFFFF).value
+                    y_phys = ctypes.c_short((lparam >> 16) & 0xFFFF).value
 
-                margin = 4
-                x, y, w, h = logical_pt.x(), logical_pt.y(), self.width(), self.height()
-                on_left, on_right, on_top, on_bottom = (x < margin), (x > w - margin), (y < margin), (y > h - margin)
+                    # Convert physical -> logical coordinates using devicePixelRatioF()
+                    try:
+                        # QWidget.devicePixelRatioF() is preferred if available
+                        scale = self.devicePixelRatioF()
+                    except Exception:
+                        try:
+                            scale = float(self.window().devicePixelRatio())
+                        except Exception:
+                            scale = 1.0
 
-                if on_top and on_left: return True, self.HTTOPLEFT
-                if on_top and on_right: return True, self.HTTOPRIGHT
-                if on_bottom and on_left: return True, self.HTBOTTOMLEFT
-                if on_bottom and on_right: return True, self.HTBOTTOMRIGHT
-                if on_left: return True, self.HTLEFT
-                if on_right: return True, self.HTRIGHT
-                if on_top: return True, self.HTTOP
-                if on_bottom: return True, self.HTBOTTOM
+                    if not scale or scale <= 0:
+                        scale = 1.0
+
+                    logical_x = int(round(x_phys / scale))
+                    logical_y = int(round(y_phys / scale))
+
+                    local_pt = self.mapFromGlobal(QPoint(logical_x, logical_y))
+
+                    # If outside window bounds, fallback
+                    if (local_pt.x() < 0 or local_pt.y() < 0 or
+                            local_pt.x() > self.width() or local_pt.y() > self.height()):
+                        return super().nativeEvent(eventType, message)
+
+                    margin = 4
+                    on_left = local_pt.x() >= 0 and local_pt.x() < margin
+                    on_right = local_pt.x() > self.width() - margin and local_pt.x() <= self.width()
+                    on_top = local_pt.y() >= 0 and local_pt.y() < margin
+                    on_bottom = local_pt.y() > self.height() - margin and local_pt.y() <= self.height()
+
+                    # Return resize hit-tests only
+                    if on_top and on_left:
+                        return True, self.HTTOPLEFT
+                    if on_top and on_right:
+                        return True, self.HTTOPRIGHT
+                    if on_bottom and on_left:
+                        return True, self.HTBOTTOMLEFT
+                    if on_bottom and on_right:
+                        return True, self.HTBOTTOMRIGHT
+                    if on_left:
+                        return True, self.HTLEFT
+                    if on_right:
+                        return True, self.HTRIGHT
+                    if on_top:
+                        return True, self.HTTOP
+                    if on_bottom:
+                        return True, self.HTBOTTOM
+
+                    # Do NOT return HTCAPTION even if inside the top bar; VisualTopBar handles moving.
+            except Exception as e:
+                log_debug(f"Error in nativeEvent: {e}")
+
             return super().nativeEvent(eventType, message)
+
+
 else:
-    class RTLTextDisplay: raise ImportError("PySide6 not available")
-    class PySideTranslationOverlay: raise ImportError("PySide6 not available")
+    # PySide not available: define placeholders that raise when used
+    class RTLTextDisplay:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("PySide6 not available")
 
+    class PySideTranslationOverlay:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("PySide6 not available")
+
+
+# -----------------------
+# QApplication helper
+# -----------------------
 def ensure_qapplication():
-    if not PYSIDE6_AVAILABLE: return None
-    if sys.platform == "win32":
-        os.environ.setdefault('QT_AUTO_SCREEN_SCALE_FACTOR', '1')
-        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    return QApplication.instance() or QApplication(sys.argv)
+    """Ensure a single QApplication instance exists and configure high-dpi settings."""
+    if not PYSIDE6_AVAILABLE:
+        log_debug("PySide6 not available - cannot create QApplication")
+        return None
 
+    if sys.platform == "win32":
+        # Environment tweaks for HiDPI behavior
+        os.environ.setdefault('QT_AUTO_SCREEN_SCALE_FACTOR', '1')
+        os.environ.setdefault('QT_ENABLE_HIGHDPI_SCALING', '1')
+
+        try:
+            # Ensure Qt knows we want high-dpi support (set attributes before creating app)
+            QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+            QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+            QApplication.setHighDpiScaleFactorRoundingPolicy(
+                Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+            )
+        except Exception:
+            pass
+
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+        log_debug("Created QApplication instance for PySide overlays")
+    return app
+
+
+# -----------------------
+# Manager for overlays
+# -----------------------
 class PySideOverlayManager:
+    """Manager for PySide overlays to coexist with a tkinter application."""
+
     def __init__(self):
         self.overlay = None
         self.qapp = None
         self.available = PYSIDE6_AVAILABLE
 
-    def create_overlay(self, app, initial_geometry, bg_color, title="Translation", **kwargs):
-        if not self.available: return None
-        self.qapp = self.qapp or ensure_qapplication()
-        if self.overlay: self.overlay.close()
-        self.overlay = PySideTranslationOverlay(initial_geometry, bg_color, title, parent=app, **kwargs)
-        return self.overlay
+    def ensure_qapp(self):
+        if not self.available:
+            return None
+        if self.qapp is None:
+            self.qapp = ensure_qapplication()
+        return self.qapp
+
+    def create_overlay(self, initial_geometry, bg_color, title="Translation", **kwargs):
+        """Create PySide overlay and forward optional visual kwargs to the overlay."""
+        if not self.available:
+            log_debug("PySide6 not available - cannot create overlay")
+            return None
+
+        try:
+            self.ensure_qapp()
+
+            if self.overlay:
+                try:
+                    self.overlay.close()
+                except Exception:
+                    pass
+
+            log_debug(f"Creating PySide overlay with geometry: {initial_geometry}, color: {bg_color}, opts: {kwargs}")
+            self.overlay = PySideTranslationOverlay(initial_geometry, bg_color, title, **kwargs)
+            log_debug("PySide overlay created successfully")
+            return self.overlay
+        except Exception as e:
+            log_debug(f"Error creating PySide overlay: {e}")
+            self.overlay = None
+            return None
 
     def close_overlay(self):
-        if self.overlay: self.overlay.close()
-        self.overlay = None
+        if self.overlay:
+            try:
+                self.overlay.close()
+            except Exception:
+                pass
+            self.overlay = None
 
+
+# Singleton manager
 _pyside_manager = PySideOverlayManager()
-def get_pyside_manager(): return _pyside_manager
-def is_pyside_available(): return PYSIDE6_AVAILABLE
+
+
+def get_pyside_manager():
+    return _pyside_manager
+
+
+def is_pyside_available():
+    return PYSIDE6_AVAILABLE

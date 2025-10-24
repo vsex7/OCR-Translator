@@ -1242,14 +1242,9 @@ def create_settings_tab(app):
     text_opacity_spinbox.bind("<FocusOut>", on_text_opacity_focus_out)
     current_row += 1
 
-    # Overlay display mode
-    ttk.Label(frame, text=app.ui_lang.get_label("overlay_display_mode_label", "Display Mode:")).grid(row=current_row, column=0, padx=5, pady=5, sticky="w")
-    display_mode_frame = ttk.Frame(frame)
-    display_mode_frame.grid(row=current_row, column=1, columnspan=2, padx=5, pady=5, sticky="ew")
-
-    ttk.Radiobutton(display_mode_frame, text=app.ui_lang.get_label("display_mode_target_only", "Target Only"), variable=app.overlay_display_mode_var, value="target_only").pack(side=tk.LEFT, padx=(0, 10))
-    ttk.Radiobutton(display_mode_frame, text=app.ui_lang.get_label("display_mode_source_target", "Source + Target"), variable=app.overlay_display_mode_var, value="source_target").pack(side=tk.LEFT, padx=(0, 10))
-    ttk.Radiobutton(display_mode_frame, text=app.ui_lang.get_label("display_mode_overlay", "Overlay"), variable=app.overlay_display_mode_var, value="overlay").pack(side=tk.LEFT, padx=(0, 10))
+    # Input Field Translation Checkbox
+    ttk.Label(frame, text=app.ui_lang.get_label("input_field_translation_label", "Input Field Translation:")).grid(row=current_row, column=0, padx=5, pady=5, sticky="w")
+    ttk.Checkbutton(frame, text=app.ui_lang.get_label("input_field_translation_checkbox", "Enable"), variable=app.input_field_translation_enabled_var).grid(row=current_row, column=1, padx=5, pady=5, sticky="w")
     current_row += 1
     
     file_cache_frame_outer = ttk.LabelFrame(frame, text=app.ui_lang.get_label("file_cache_frame_title")) 

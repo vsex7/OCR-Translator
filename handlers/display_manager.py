@@ -34,12 +34,11 @@ class DisplayManager:
         self.current_logical_text = ""
         self.current_language_code = None
     
-    def update_translation_text(self, text_to_display, source_text=""):
+    def update_translation_text(self, text_to_display):
         """Updates the translation text overlay with new content
         
         Args:
             text_to_display: Text content to display in the overlay
-            source_text: The original source text
         """
         # Check if the target overlay and text widget references are valid
         if not self.app.target_overlay or not hasattr(self.app.target_overlay, 'winfo_exists') or not self.app.target_overlay.winfo_exists() or \
@@ -48,7 +47,7 @@ class DisplayManager:
             return
             
         # Schedule the actual update via the main thread's event loop
-        self.app.root.after(0, self._update_translation_text_on_main_thread, text_to_display, source_text)
+        self.app.root.after(0, self._update_translation_text_on_main_thread, text_to_display)
 
     def manually_wrap_and_process_rtl(self, widget, logical_text, language_code, retry_count=0):
         """
@@ -224,12 +223,11 @@ class DisplayManager:
                     retry_count=0  # Reset retry count for resize events
                 )
 
-    def _update_translation_text_on_main_thread(self, text_content_main_thread, source_text):
+    def _update_translation_text_on_main_thread(self, text_content_main_thread):
         """Updates the translation text widget on the main thread with proper BiDi support
         
         Args:
             text_content_main_thread: Text content to display
-            source_text: The original source text
         """
         if not self.app.target_overlay or not self.app.target_overlay.winfo_exists() or \
            not self.app.translation_text:
@@ -267,11 +265,8 @@ class DisplayManager:
                 font_type = self.app.target_font_type_var.get()
                 bg_color = self.app.target_colour_var.get()
                 
-                display_mode = self.app.overlay_display_mode_var.get()
                 self.app.translation_text.set_rtl_text(
                     new_text_to_display,
-                    source_text,
-                    display_mode,
                     target_lang_code, 
                     bg_color, 
                     text_color, 
