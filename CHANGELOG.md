@@ -5,6 +5,15 @@ All notable changes to the Game-Changing Translator project will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0] - 2025-10-23
+
+### Added
+- **Input Field Translation**: A new feature that allows for in-place translation of text within any application's input fields.
+  - **Activation**: Enabled via a checkbox in the Settings tab.
+  - **Floating Icon**: When a text input field is clicked, a floating translation icon appears next to it.
+  - **Click-to-Translate**: Clicking the icon copies the text from the input field, translates it, and pastes the translated text back, replacing the original.
+  - **Undo Functionality**: After a translation, a temporary `Ctrl+Z` hotkey is registered for 5 seconds, allowing the user to revert the text to its original state.
+
 ## [3.8.0] - 2025-10-23
 
 ### Added

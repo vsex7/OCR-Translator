@@ -1297,6 +1297,11 @@ def create_settings_tab(app):
     app.toggle_input_hook_btn = ttk.Button(hover_frame, text=app.ui_lang.get_label("disable_input_hook_btn", "Disable Input Hook"), command=app.toggle_input_hook)
     app.toggle_input_hook_btn.grid(row=2, column=0, columnspan=3, padx=5, pady=5, sticky="w")
     current_row += 1
+
+    input_field_frame = ttk.LabelFrame(frame, text=app.ui_lang.get_label("input_field_translation_title", "Input Field Translation"))
+    input_field_frame.grid(row=current_row, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
+    ttk.Checkbutton(input_field_frame, text=app.ui_lang.get_label("enable_input_field_translation_checkbox", "Enable input field translation"), variable=app.enable_input_field_translation_var).grid(row=0, column=0, padx=5, pady=2, sticky="w")
+    current_row += 1
     
     button_frame_outer = ttk.Frame(frame)
     button_frame_outer.grid(row=current_row, column=0, columnspan=3, pady=10)

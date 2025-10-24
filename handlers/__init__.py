@@ -9,3 +9,4 @@ from .hotkey_handler import HotkeyHandler
 from .statistics_handler import StatisticsHandler
 from .translation_handler import TranslationHandler
 from .ui_interaction_handler import UIInteractionHandler
+from .input_hook_manager import InputHookManager

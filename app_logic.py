@@ -57,7 +57,8 @@ from handlers import (
     HotkeyHandler, 
     StatisticsHandler,
     TranslationHandler, 
-    UIInteractionHandler
+    UIInteractionHandler,
+    InputHookManager
 )
 from handlers.gemini_models_manager import GeminiModelsManager
 from handlers.openai_models_manager import OpenAIModelsManager
@@ -375,6 +376,7 @@ class GameChangingTranslator:
         self.target_text_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_text_opacity', '1.0')))
         self.enable_hover_translation_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'enable_hover_translation', fallback=False))
         self.hover_delay_var = tk.IntVar(value=int(self.config['Settings'].get('hover_delay', '500')))
+        self.enable_input_field_translation_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'enable_input_field_translation', fallback=False))
 
         # Initialize OCR model display variable here to ensure it persists across UI rebuilds
         self.ocr_model_display_var = tk.StringVar()
@@ -410,6 +412,7 @@ class GameChangingTranslator:
         self.statistics_handler = StatisticsHandler(self)
         self.translation_handler = TranslationHandler(self)
         self.ui_interaction_handler = UIInteractionHandler(self) # Needs self.translation_model_names
+        self.input_hook_manager = InputHookManager(self)
 
         # Pre-initialize Gemini model for optimal performance (especially for compiled version)
         self._pre_initialize_gemini_model()
@@ -492,6 +495,7 @@ class GameChangingTranslator:
         self.target_text_opacity_var.trace_add("write", self.settings_changed_callback)
         self.enable_hover_translation_var.trace_add("write", self.settings_changed_callback)
         self.hover_delay_var.trace_add("write", self.settings_changed_callback)
+        self.enable_input_field_translation_var.trace_add("write", self.toggle_input_field_translation)
         self.num_beams_var.trace_add("write", self.settings_changed_callback)
         self.marian_model_var.trace_add("write", self.settings_changed_callback)
         self.gemini_api_key_var.trace_add("write", self.settings_changed_callback)
@@ -713,6 +717,9 @@ class GameChangingTranslator:
         self.root.after_idle(lambda: self._delayed_api_stats_refresh())
 
         self.setup_mouse_listener()
+
+        if self.enable_input_field_translation_var.get():
+            self.input_hook_manager.start()
 
     def _delayed_api_stats_refresh(self):
         """Delayed API statistics refresh to ensure GUI is fully ready."""
@@ -3621,3 +3628,11 @@ For more information, see the user manual."""
                 log_debug(f"Could not find language code for: {selected_language_name}")
         except Exception as e:
             log_debug(f"Error during language change: {e}")
+
+    def toggle_input_field_translation(self, *args):
+        """Starts or stops the InputHookManager based on the checkbox."""
+        if self.enable_input_field_translation_var.get():
+            self.input_hook_manager.start()
+        else:
+            self.input_hook_manager.stop()
+        self.save_settings()

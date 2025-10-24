@@ -269,3 +269,12 @@ stats_text_deepl_header,📈 DeepL Usage Monitor
 stats_report_generated,Report generated:
 disable_input_hook_btn,Disable Input Hook
 enable_input_hook_btn,Enable Input Hook
+input_field_translation_title,Input Field Translation
+enable_input_field_translation_checkbox,Enable input field translation
+auto_detect_window_btn,Auto-detect Window
+toggle_click_through_btn,Enable Click-through
+disable_click_through_btn,Disable Click-through
+hover_translation_title,Hover Translation
+enable_hover_translation_checkbox,Enable Hover Translation
+hover_delay_label,Hover Delay (ms)
+selected_windows_title,Selected Windows

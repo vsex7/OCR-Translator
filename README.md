@@ -74,6 +74,7 @@ This application was developed or rather vibe-coded with the support of the foll
 - **✨ Hover Translation Mode**: Translate text on-demand by simply hovering your mouse over a source area.
 - **🖱️ Click-Through Overlays**: Make overlay windows transparent to mouse clicks, allowing interaction with underlying game or application elements.
 - **📋 Context Menu**: Right-click on the translation overlay to quickly **Copy** the text or have it **Read Aloud** using a text-to-speech engine.
+- **📝 Input Field Translation**: Click on any text input field in any application to bring up a translation icon. Clicking the icon translates the text in-place, with `Ctrl+Z` support to undo.
 
 ### 🚀 NEW in Version 3.7.0
 - **🎯 DeepL Translation with Context - A Game-Changing First!** 🌟: Revolutionary context-aware DeepL translation that intelligently remembers up to 3 previous subtitles for **dramatically improved grammar, accuracy, and natural conversational flow** ✨

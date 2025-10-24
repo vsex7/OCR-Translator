@@ -269,3 +269,12 @@ stats_text_deepl_header,📈 Monitor użycia DeepL
 stats_report_generated,Raport wygenerowany:
 disable_input_hook_btn,Wyłącz przechwytywanie
 enable_input_hook_btn,Włącz przechwytywanie
+input_field_translation_title,Tłumaczenie pól tekstowych
+enable_input_field_translation_checkbox,Włącz tłumaczenie pól tekstowych
+auto_detect_window_btn,Automatyczne wykrywanie okna
+toggle_click_through_btn,Włącz przeklikiwanie
+disable_click_through_btn,Wyłącz przeklikiwanie
+hover_translation_title,Tłumaczenie po najechaniu
+enable_hover_translation_checkbox,Włącz tłumaczenie po najechaniu
+hover_delay_label,Opóźnienie najechania (ms)
+selected_windows_title,Wybrane okna
