@@ -5,6 +5,21 @@ All notable changes to the Game-Changing Translator project will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2025-10-23
+
+### Added
+- **Hover Translation Mode**: A new interaction mode that allows users to translate text on-demand by simply hovering their mouse over a source area.
+  - **Enable/Disable**: Can be toggled via a checkbox in the Settings tab.
+  - **Configurable Delay**: A "Hover Delay" slider allows users to set the time (in milliseconds) the mouse must remain still before a translation is triggered, preventing accidental captures.
+  - **Synchronous Translation**: This mode uses a separate, synchronous (blocking) translation path to ensure immediate feedback upon hover, bypassing the standard asynchronous queue.
+- **Click-Through Overlays**: Added a "Toggle Click-through" button on the main tab, which makes all overlay windows (source and target) transparent to mouse events.
+  - This allows users to interact with underlying game or application elements without moving the overlays.
+  - This feature is Windows-only and utilizes the `pywin32` library to modify window styles.
+- **Right-Click Context Menu**: A context menu has been added to the translation overlay, accessible via a right-click.
+  - **Copy**: Copies the currently displayed translation to the clipboard using `pyperclip`.
+  - **Read Aloud**: Uses a text-to-speech engine (`pyttsx3`) to read the translated text aloud.
+  - The menu items are disabled if there is no text in the overlay.
+
 ## [3.7.0] - 2025-10-04
 
 ### Added

@@ -803,10 +803,15 @@ Result:
     
     # === TRANSLATION INTERFACE (UNIFIED) ===
     
-    def translate(self, text_to_translate, source_lang, target_lang, ocr_batch_number=None):
+    def translate(self, text_to_translate, source_lang, target_lang, ocr_batch_number=None, is_hover=False):
         """Main translation method - handles all common logic."""
         log_debug(f"{self.provider_name.title()} translate request for: {text_to_translate}")
         
+        if is_hover:
+            # For hover, we want a synchronous, blocking call.
+            # We bypass the async logic and call the core translation logic directly.
+            return self._execute_translation(text_to_translate, source_lang, target_lang)
+
         # Check circuit breaker and force refresh if needed
         if self.circuit_breaker.should_force_refresh():
             log_debug(f"{self.provider_name.title()} circuit breaker forcing client refresh due to network issues")
@@ -909,6 +914,25 @@ Result:
         finally:
             # Always decrement pending call counter
             self._decrement_pending_translation_calls()
+
+    def _execute_translation(self, text_to_translate, source_lang, target_lang):
+        # This is a synchronous version of the translation logic for hover mode.
+        try:
+            api_key = self._get_api_key()
+            if not api_key: return f"{self.provider_name.title()} API key missing"
+            if not self._check_provider_availability(): return f"{self.provider_name.title()} libraries not available"
+            if self.client is None or self._should_reset_session(api_key):
+                self._initialize_client(api_key, source_lang, target_lang)
+            if self.client is None: return f"{self.provider_name.title()} client initialization failed"
+
+            message_content = self._build_context_string(text_to_translate, source_lang, target_lang)
+            model_config = self._get_model_config()
+            response = self._make_api_call(message_content, model_config)
+            translation_result, _, _, _, _, _ = self._parse_response(response)
+
+            return translation_result
+        except Exception as e:
+            return f"{self.provider_name.title()} API error: {str(e)}"
     
     def _is_error_message(self, text):
         """Check if a translation result is an error message."""

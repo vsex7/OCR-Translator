@@ -274,3 +274,8 @@ class OpenAIProvider(AbstractLLMProvider):
         """Check if OpenAI error should be suppressed from display."""
         # Suppress rate limit errors from being displayed in translation window
         return "rate limit" in error_str.lower()
+
+    def translate(self, text_to_translate, source_lang, target_lang, ocr_batch_number=None, is_hover=False):
+        """Main translation method for OpenAI."""
+        # This now calls the base class method, passing along the is_hover flag.
+        return super().translate(text_to_translate, source_lang, target_lang, ocr_batch_number, is_hover)

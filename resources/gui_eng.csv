@@ -267,3 +267,5 @@ stats_text_trans_header_openai,🔄 OpenAI Translation Statistics
 stats_text_combined_header_openai,💰 Combined OpenAI Statistics
 stats_text_deepl_header,📈 DeepL Usage Monitor
 stats_report_generated,Report generated:
+disable_input_hook_btn,Disable Input Hook
+enable_input_hook_btn,Enable Input Hook
