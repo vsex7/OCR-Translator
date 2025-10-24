@@ -233,6 +233,13 @@ def _preserve_overlay_position(app):
         log_debug(f"OverlayManager: Error preserving overlay position: {e}")
 
 def create_target_overlay_om(app, skip_preservation=False):
+    display_mode = app.overlay_display_mode_var.get()
+
+    # If in overlay mode, use the source area geometry for the target overlay
+    if display_mode == 'overlay' and app.source_area:
+        app.target_area = app.source_area
+        log_debug(f"Overlay mode: Target area set to source area geometry: {app.target_area}")
+
     if not app.target_area or len(app.target_area) != 4:
          try:
              x1 = int(app.config['Settings'].get('target_area_x1', '200'))
@@ -298,16 +305,19 @@ def create_target_overlay_om(app, skip_preservation=False):
             log_debug("OverlayManager: PySide6 available, attempting to create PySide overlay")
             pyside_manager = get_pyside_manager()
 
+            is_movable = display_mode != 'overlay'
             app.target_overlay = pyside_manager.create_overlay(
+                app,
                 app.target_area,
                 target_color,
                 title="Translation",
-                top_bar_height=top_bar_height,
+                top_bar_height=top_bar_height if is_movable else 0,
                 text_padding=(pad_x, pad_y),
                 font_size=font_size,
                 font_family="Arial",
                 border_px=border_px,
-                opacity=opacity
+                opacity=opacity,
+                is_movable=is_movable
             )
 
             if app.target_overlay:

@@ -69,6 +69,8 @@ DEFAULT_CONFIG_SETTINGS = {
     'keep_linebreaks': 'False',
     # Auto-update settings
     'check_for_updates_on_startup': 'yes'
+    # Overlay display mode
+    'overlay_display_mode': 'target_only'
 }
 
 
