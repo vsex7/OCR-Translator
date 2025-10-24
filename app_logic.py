@@ -10,18 +10,6 @@ import threading
 import time
 import queue
 import sys
-
-is_windows = sys.platform == 'win32'
-if is_windows:
-    try:
-        import win32gui
-        import win32con
-        PYWIN32_AVAILABLE = True
-    except ImportError:
-        PYWIN32_AVAILABLE = False
-else:
-    PYWIN32_AVAILABLE = False
-
 from PIL import Image, ImageTk
 import os
 import re
@@ -30,8 +18,6 @@ import traceback
 import io
 import base64
 import concurrent.futures
-
-from pynput import mouse
 
 from logger import log_debug, set_debug_logging_enabled, is_debug_logging_enabled
 from resource_handler import get_resource_path
@@ -61,7 +47,6 @@ from handlers import (
 )
 from handlers.gemini_models_manager import GeminiModelsManager
 from handlers.openai_models_manager import OpenAIModelsManager
-from input_hook_manager import InputHookManager
 
 KEYBOARD_AVAILABLE = False
 try:
@@ -108,16 +93,6 @@ class GameChangingTranslator:
         self.root.minsize(500, 430)
         self.root.resizable(True, True)
         
-        self.PYWIN32_AVAILABLE = PYWIN32_AVAILABLE
-        self.click_through_enabled = False
-        self.input_hook_enabled = True
-
-        self.mouse_listener = None
-        self.hover_check_timer = None
-        self.last_mouse_pos = None
-        self.hovered_hwnd = None
-        self.hover_start_time = None
-
         self._fully_initialized = False # Flag for settings save callback
         self.toggle_in_progress = False
 
@@ -178,16 +153,14 @@ class GameChangingTranslator:
         else:
             log_debug("Process-level CPU affinity DISABLED via configuration flag")
 
-        self.source_areas = {}
+        self.source_area = None 
         self.target_area = None 
         self.is_running = False 
         self.threads = [] 
         self.last_image_hash = None 
-        self.source_overlays = {}
+        self.source_overlay = None
         self.target_overlay = None
-        self.target_overlays = {}
         self.translation_text = None
-        self.translation_texts = {}
         self.text_stability_counter = 0 
         self.previous_text = "" 
         self.last_screenshot = None 
@@ -374,13 +347,6 @@ class GameChangingTranslator:
         self.target_font_type_var = tk.StringVar(value=self.config['Settings'].get('target_font_type', 'Arial'))
         self.target_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_opacity', '0.15')))
         self.target_text_opacity_var = tk.DoubleVar(value=float(self.config['Settings'].get('target_text_opacity', '1.0')))
-<<<<<<< HEAD
-        self.overlay_display_mode_var = tk.StringVar(value=self.config['Settings'].get('overlay_display_mode', 'target_only'))
-        self.enable_input_hook_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'enable_input_hook', fallback=False))
-=======
-        self.overlay_display_mode_var = tk.StringVar(value=self.config['Settings'].get('overlay_display_mode', 'target_only'))
-        self.enable_input_hook_var = tk.BooleanVar(value=self.config.getboolean('Settings', 'enable_input_hook', fallback=False))
->>>>>>> origin/feat-overlay-display-modes
 
         # Initialize OCR model display variable here to ensure it persists across UI rebuilds
         self.ocr_model_display_var = tk.StringVar()
@@ -409,7 +375,6 @@ class GameChangingTranslator:
         self.ocr_model_display_var.set(initial_ocr_display_name)
         
         # Initialize Handlers
-        self.input_hook_manager = InputHookManager(self)
         # self.cache_manager = CacheManager(self)
         self.configuration_handler = ConfigurationHandler(self)
         self.display_manager = DisplayManager(self)
@@ -497,18 +462,7 @@ class GameChangingTranslator:
         self.target_font_type_var.trace_add("write", self.settings_changed_callback)
         self.target_opacity_var.trace_add("write", self.settings_changed_callback)
         self.target_text_opacity_var.trace_add("write", self.settings_changed_callback)
-<<<<<<< HEAD
-        self.overlay_display_mode_var.trace_add("write", self.settings_changed_callback)
-        self.enable_input_hook_var.trace_add("write", self.toggle_input_hook)
-=======
-        self.overlay_display_mode_var.trace_add("write", self.settings_changed_callback)
-        self.enable_input_hook_var.trace_add("write", self.toggle_input_hook)
->>>>>>> origin/feat-overlay-display-modes
         self.num_beams_var.trace_add("write", self.settings_changed_callback)
-feat-multi-window-capture
-main
- self.marian_model_var.trace_add("write", self.settings_changed_callback)
-        self.gemini_api_key_var.trace_add("write", self.settings_changed_callback)
         self.marian_model_var.trace_add("write", self.settings_changed_callback) 
         self.gui_language_var.trace_add("write", self.on_language_change)
         self.ocr_model_var.trace_add("write", self.settings_changed_callback)
@@ -727,13 +681,6 @@ main
         # Refresh API statistics for the new API Usage tab
         self.root.after_idle(lambda: self._delayed_api_stats_refresh())
 
-<<<<<<< HEAD
-        self.setup_mouse_listener()
-=======
-        if self.enable_input_hook_var.get():
-            self.input_hook_manager.start()
->>>>>>> origin/feat-overlay-display-modes
-
     def _delayed_api_stats_refresh(self):
         """Delayed API statistics refresh to ensure GUI is fully ready."""
         try:
@@ -876,7 +823,6 @@ main
         except Exception as e:
             log_debug(f"Error in OCR model change callback: {e}")
 
-<<<<<<< HEAD
     def on_language_change(self, *args):
         """Called when GUI language selection changes."""
         if not self._fully_initialized or self._ui_update_in_progress:
@@ -903,17 +849,6 @@ main
         except Exception as e:
             log_debug(f"Error in language change callback: {e}")
 
-=======
-    def toggle_input_hook(self, *args):
-        """Start or stop the InputHookManager based on the checkbox."""
-        if self._fully_initialized:
-            if self.enable_input_hook_var.get():
-                self.input_hook_manager.start()
-            else:
-                self.input_hook_manager.stop()
-            self.save_settings()
-
->>>>>>> origin/feat-overlay-display-modes
     def save_settings(self):
         if self._fully_initialized:
             return self.ui_interaction_handler.save_settings()
@@ -962,8 +897,8 @@ main
     def browse_marian_models_file(self):
         self.configuration_handler.browse_marian_models_file()
 
-    def update_translation_text(self, text_to_display, hwnd=None):
-        self.display_manager.update_translation_text(text_to_display, hwnd)
+    def update_translation_text(self, text_to_display):
+        self.display_manager.update_translation_text(text_to_display)
 
     def update_debug_display(self, original_img_pil, processed_img_cv, ocr_text_content):
         self.display_manager.update_debug_display(original_img_pil, processed_img_cv, ocr_text_content)
@@ -2017,82 +1952,6 @@ main
             # Force quit
             self.root.quit()
 
-    def toggle_input_hook(self):
-        """Enable or disable the input hook (mouse and keyboard)."""
-        self.input_hook_enabled = not self.input_hook_enabled
-        log_debug(f"Toggling input hook to: {'Enabled' if self.input_hook_enabled else 'Disabled'}")
-
-        if self.input_hook_enabled:
-            # Enable hotkeys and mouse listener
-            self.hotkey_handler.setup_hotkeys()
-            if self.enable_input_hook_var.get():
-                self.input_hook_manager.start()
-        else:
-            # Disable hotkeys and mouse listener
-            if self.KEYBOARD_AVAILABLE:
-                import keyboard
-                keyboard.unhook_all()
-            if self.mouse_listener:
-                self.mouse_listener.stop()
-                self.mouse_listener = None
-
-        # Update button text
-        if hasattr(self, 'toggle_input_hook_btn') and self.toggle_input_hook_btn.winfo_exists():
-            if self.input_hook_enabled:
-                button_text = self.ui_lang.get_label("disable_input_hook_btn", "Disable Input Hook")
-            else:
-                button_text = self.ui_lang.get_label("enable_input_hook_btn", "Enable Input Hook")
-            self.toggle_input_hook_btn.config(text=button_text)
-
-    def toggle_click_through(self):
-        """Toggle click-through (mouse transparency) for all overlay windows."""
-        if not self.PYWIN32_AVAILABLE:
-            messagebox.showerror("Error", "PyWin32 library is not available. This feature works only on Windows.")
-            log_debug("Attempted to toggle click-through, but PyWin32 is not available.")
-            return
-
-        self.click_through_enabled = not self.click_through_enabled
-        log_debug(f"Toggling click-through mode to: {'Enabled' if self.click_through_enabled else 'Disabled'}")
-
-        try:
-            overlays_to_modify = []
-            overlays_to_modify.extend(self.source_overlays.values())
-            overlays_to_modify.extend(self.target_overlays.values())
-            if self.target_overlay: # Handle the single target_overlay as well
-                overlays_to_modify.append(self.target_overlay)
-
-            # Use a set to avoid modifying the same overlay twice
-            unique_overlays = set(filter(None, overlays_to_modify))
-
-            for overlay in unique_overlays:
-                if overlay.winfo_exists():
-                    hwnd = overlay.winfo_id()
-                    current_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-
-                    if self.click_through_enabled:
-                        # Enable click-through: Add WS_EX_TRANSPARENT
-                        # WS_EX_LAYERED is also needed for transparency effects
-                        new_style = current_style | win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
-                    else:
-                        # Disable click-through: Remove WS_EX_TRANSPARENT
-                        new_style = current_style & ~win32con.WS_EX_TRANSPARENT
-
-                    win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, new_style)
-                    log_debug(f"Set GWL_EXSTYLE for hwnd {hwnd} to {new_style}")
-
-            # Update button text
-            if hasattr(self, 'toggle_click_through_btn') and self.toggle_click_through_btn.winfo_exists():
-                if self.click_through_enabled:
-                    button_text = self.ui_lang.get_label("disable_click_through_btn", "Disable Click-through")
-                else:
-                    button_text = self.ui_lang.get_label("enable_click_through_btn", "Enable Click-through")
-                self.toggle_click_through_btn.config(text=button_text)
-                log_debug(f"Updated click-through button text to: {button_text}")
-
-        except Exception as e:
-            log_debug(f"Error toggling click-through: {e}")
-            messagebox.showerror("Error", f"An error occurred while toggling click-through: {e}")
-
     def toggle_debug_logging(self):
         """Toggle debug logging on/off and update button text."""
         current_state = self.debug_logging_enabled_var.get()
@@ -2316,25 +2175,22 @@ main
             
             # Always try to capture from source area for real-time preview (independent of translation state)
             screenshot_pil = None
-            if self.source_overlays:
-                # Use the first available overlay for preview
-                first_overlay = next(iter(self.source_overlays.values()), None)
-                if first_overlay and first_overlay.winfo_exists():
-                    try:
-                        area = first_overlay.get_geometry()
-                        if area:
-                            x1, y1, x2, y2 = map(int, area)
-                            width, height = x2-x1, y2-y1
-                            if width > 0 and height > 0:
-                                import pyautogui
-                                screenshot_pil = pyautogui.screenshot(region=(x1, y1, width, height))
-                            else:
-                                screenshot_pil = None
+            if self.source_overlay and self.source_overlay.winfo_exists():
+                try:
+                    area = self.source_overlay.get_geometry()
+                    if area:
+                        x1, y1, x2, y2 = map(int, area)
+                        width, height = x2-x1, y2-y1
+                        if width > 0 and height > 0:
+                            import pyautogui
+                            screenshot_pil = pyautogui.screenshot(region=(x1, y1, width, height))
                         else:
                             screenshot_pil = None
-                    except Exception as e:
-                        log_debug(f"Error capturing for preview: {e}")
+                    else:
                         screenshot_pil = None
+                except Exception as e:
+                    log_debug(f"Error capturing for preview: {e}")
+                    screenshot_pil = None
             
             # Fallback to using last_screenshot only if direct capture failed
             if screenshot_pil is None and hasattr(self, 'last_screenshot') and self.last_screenshot:
@@ -2584,10 +2440,9 @@ main
             except tk.TclError as e_ctt:
                 log_debug(f"Error clearing translation text on stop: {e_ctt}")
         
-        for overlay in self.source_overlays.values():
-            if overlay and overlay.winfo_exists() and overlay.winfo_viewable():
-                try: overlay.hide()
-                except tk.TclError: log_debug("Error hiding source overlay on stop (likely closed).")
+        if self.source_overlay and self.source_overlay.winfo_exists() and self.source_overlay.winfo_viewable():
+            try: self.source_overlay.hide()
+            except tk.TclError: log_debug("Error hiding source overlay on stop (likely closed).")
         
         if self.target_overlay and self.target_overlay.winfo_exists() and self.target_overlay.winfo_viewable():
             try: self.target_overlay.hide()
@@ -2656,7 +2511,7 @@ main
 
                 valid_start_flag = True 
                 
-                if not self.source_overlays:
+                if not self.source_overlay or not self._widget_exists_safely(self.source_overlay):
                     messagebox.showerror("Start Error", "Source area overlay missing. Select source area.", parent=self.root)
                     valid_start_flag = False
                 if valid_start_flag and (not self.target_overlay or not self._widget_exists_safely(self.target_overlay)):
@@ -2674,12 +2529,9 @@ main
                 
                 if valid_start_flag:
                      try:
-                         for hwnd, overlay in self.source_overlays.items():
-                             self.source_areas[hwnd] = overlay.get_geometry()
-                             if not self._validate_area_coords(self.source_areas[hwnd], "source"):
-                                 valid_start_flag = False
-                                 break
+                         self.source_area = self.source_overlay.get_geometry()
                          self.target_area = self.target_overlay.get_geometry()
+                         if not self._validate_area_coords(self.source_area, "source"): valid_start_flag = False
                          if valid_start_flag and not self._validate_area_coords(self.target_area, "target"): valid_start_flag = False
                      except (tk.TclError, AttributeError) as e_gog:
                          messagebox.showerror("Start Error", f"Could not get overlay geometry: {e_gog}", parent=self.root)
@@ -2766,174 +2618,6 @@ main
             log_debug("Requesting stop translation from worker thread.")
             if self.root.winfo_exists():
                 self.root.after(0, self.toggle_translation)
-
-    def auto_detect_window(self):
-        """auto detect window and set the area of the window as the source area"""
-        try:
-            import win32gui
-            import win32con
-            import win32process
-            import psutil
-        except ImportError:
-            messagebox.showerror("Error", "PyWin32 or psutil not installed. Please install it to use this feature.")
-            return
-
-        windows = []
-        def callback(hwnd, extra):
-            if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
-                _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                try:
-                    process = psutil.Process(pid)
-                    exe_name = process.name()
-                    windows.append((hwnd, win32gui.GetWindowText(hwnd), exe_name))
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
-
-        win32gui.EnumWindows(callback, None)
-
-        # Filter and prioritize windows
-        priority_exes = ["Code.exe", "chrome.exe", "msedge.exe", "firefox.exe"]
-        priority_windows = []
-        other_windows = []
-
-        for hwnd, title, exe_name in windows:
-            if exe_name in priority_exes:
-                priority_windows.append((hwnd, title, exe_name))
-            else:
-                other_windows.append((hwnd, title, exe_name))
-
-        sorted_windows = priority_windows + other_windows
-
-        if not sorted_windows:
-            messagebox.showinfo("No Windows Found", "No open windows with titles were found.")
-            return
-
-        # Create a dialog to select a window
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Select up to 5 Windows")
-        dialog.geometry("400x300")
-        listbox = tk.Listbox(dialog, selectmode=tk.MULTIPLE)
-        listbox.pack(fill="both", expand=True)
-
-        for i, (hwnd, title, exe_name) in enumerate(sorted_windows):
-            if i >= 25:
-                break
-            listbox.insert(tk.END, f"{title} ({exe_name})")
-
-        def on_select():
-            try:
-                selected_indices = listbox.curselection()
-                if not selected_indices:
-                    dialog.destroy()
-                    return
-
-                if len(selected_indices) > 5:
-                    messagebox.showwarning("Too Many Windows", "Please select up to 5 windows.")
-                    return
-
-                dialog.destroy()
-
-                for i in selected_indices:
-                    parent_hwnd, title, _ = sorted_windows[i]
-
-                    # Enumerate child windows
-                    child_windows = []
-                    def enum_child_proc(hwnd, lparam):
-                        child_windows.append(hwnd)
-                        return True
-                    win32gui.EnumChildWindows(parent_hwnd, enum_child_proc, None)
-
-                    if child_windows:
-                        sub_dialog = tk.Toplevel(self.root)
-                        sub_dialog.title(f"Select Sub-window for '{title}'")
-                        sub_dialog.geometry("400x300")
-                        sub_listbox = tk.Listbox(sub_dialog, selectmode=tk.SINGLE)
-                        sub_listbox.pack(fill="both", expand=True)
-
-                        for child_hwnd in child_windows:
-                            child_title = win32gui.GetWindowText(child_hwnd)
-                            rect = win32gui.GetWindowRect(child_hwnd)
-                            sub_listbox.insert(tk.END, f"{child_title} - {rect}")
-
-                        def on_sub_select():
-                            try:
-                                sub_selected_index = sub_listbox.curselection()
-                                if sub_selected_index:
-                                    child_hwnd = child_windows[sub_selected_index[0]]
-                                    rect = win32gui.GetWindowRect(child_hwnd)
-                                else: # No sub-window selected, use parent
-                                    child_hwnd = parent_hwnd
-                                    rect = win32gui.GetWindowRect(parent_hwnd)
-
-                                x1, y1, x2, y2 = rect
-                                source_area = [x1, y1, x2, y2]
-                                self.source_areas[child_hwnd] = source_area
-                                log_debug(f"Selected area for '{title}' (hwnd: {child_hwnd}): {source_area}")
-                                create_source_overlay_om(self, child_hwnd, source_area)
-
-                                target_area = [x1, y2, x2, y2 + 100]
-                                create_target_overlay_om(self, child_hwnd, target_area)
-                            finally:
-                                sub_dialog.destroy()
-
-                        sub_select_button = ttk.Button(sub_dialog, text="Select", command=on_sub_select)
-                        sub_select_button.pack(pady=5)
-                        self.root.wait_window(sub_dialog)
-                    else:
-                        # No child windows, use the main window
-                        rect = win32gui.GetWindowRect(parent_hwnd)
-                        x1, y1, x2, y2 = rect
-                        source_area = [x1, y1, x2, y2]
-                        self.source_areas[parent_hwnd] = source_area
-                        log_debug(f"Auto-detected source area for '{title}' (hwnd: {parent_hwnd}): {source_area}")
-                        create_source_overlay_om(self, parent_hwnd, source_area)
-
-                        target_area = [x1, y2, x2, y2 + 100]
-                        create_target_overlay_om(self, parent_hwnd, target_area)
-
-                messagebox.showinfo("Area Set", f"{len(self.source_areas)} source area(s) set.")
-                self.update_selected_windows_ui()
-            except IndexError:
-                pass
-
-        select_button = ttk.Button(dialog, text="Select", command=on_select)
-        select_button.pack(pady=5)
-
-    def update_selected_windows_ui(self):
-        """Update the UI to show the currently selected windows."""
-        for widget in self.selected_windows_frame.winfo_children():
-            widget.destroy()
-
-        for hwnd, overlay in self.source_overlays.items():
-            if overlay and overlay.winfo_exists():
-                try:
-                    import win32gui
-                    title = win32gui.GetWindowText(hwnd)
-                    frame = ttk.Frame(self.selected_windows_frame)
-                    frame.pack(fill="x", padx=5, pady=2)
-                    label = ttk.Label(frame, text=title)
-                    label.pack(side="left", fill="x", expand=True)
-                    remove_button = ttk.Button(frame, text="Remove", command=lambda h=hwnd: self.remove_window(h))
-                    remove_button.pack(side="right")
-                except Exception as e:
-                    log_debug(f"Error updating selected windows UI for hwnd {hwnd}: {e}")
-
-    def remove_window(self, hwnd):
-        """Remove a window from the selection."""
-        if hwnd in self.source_overlays:
-            overlay = self.source_overlays.pop(hwnd)
-            if overlay and overlay.winfo_exists():
-                overlay.destroy()
-        if hwnd in self.target_overlays:
-            overlay = self.target_overlays.pop(hwnd)
-            if overlay and overlay.winfo_exists():
-                overlay.destroy()
-        if hwnd in self.source_areas:
-            del self.source_areas[hwnd]
-        if hwnd in self.translation_texts:
-            del self.translation_texts[hwnd]
-
-        self.update_selected_windows_ui()
 
     def update_translation_model_names(self):
         """Update translation model names with localized strings from CSV files."""
@@ -3301,13 +2985,6 @@ For more information, see the user manual."""
                 else:
                     self.debug_log_toggle_btn.config(text=self.ui_lang.get_label("toggle_debug_log_enable_btn"))
             
-            # Update input hook button text
-            if hasattr(self, 'toggle_input_hook_btn') and self.toggle_input_hook_btn.winfo_exists():
-                if self.input_hook_enabled:
-                    self.toggle_input_hook_btn.config(text=self.ui_lang.get_label("disable_input_hook_btn", "Disable Input Hook"))
-                else:
-                    self.toggle_input_hook_btn.config(text=self.ui_lang.get_label("enable_input_hook_btn", "Enable Input Hook"))
-
             log_debug(f"UI language completely rebuilt for: {self.ui_lang.current_lang}")
         except Exception as e:
             log_debug(f"Error updating UI language: {e}")
@@ -3378,10 +3055,6 @@ For more information, see the user manual."""
     def on_closing(self):
         log_debug("Main window close requested. Initiating shutdown...")
         
-        if self.mouse_listener:
-            self.mouse_listener.stop()
-            log_debug("Mouse listener stopped.")
-
         # Close OCR Preview window if open
         if self.ocr_preview_window is not None:
             try:
@@ -3395,9 +3068,6 @@ For more information, see the user manual."""
             self.toggle_translation()
         else:
              log_debug("Process was not running at close time.")
-
-        if self.input_hook_manager.is_running:
-            self.input_hook_manager.stop()
 
         # # Force end any remaining sessions when application closes
         # if hasattr(self, 'translation_handler'):
@@ -3455,44 +3125,27 @@ For more information, see the user manual."""
                 log_debug(f"Error unhooking keyboard shortcuts: {e_uhk}")
 
         log_debug("Destroying overlay windows if they exist...")
-        for overlay in self.source_overlays.values():
-            if overlay:
+        for overlay_attr_name in ['source_overlay', 'target_overlay']:
+            overlay_widget = getattr(self, overlay_attr_name, None)
+            if overlay_widget:
                 try:
-                    if hasattr(overlay, 'winfo_exists') and overlay.winfo_exists():
-                        overlay.destroy()
-                    elif hasattr(overlay, 'close'):
-                        overlay.close()
+                    # Preserve target overlay position before destroying during shutdown
+                    if overlay_attr_name == 'target_overlay':
+                        from overlay_manager import _preserve_overlay_position
+                        _preserve_overlay_position(self)
+                        log_debug("Preserved target overlay position during app shutdown")
+                    
+                    # Handle tkinter overlays
+                    if hasattr(overlay_widget, 'winfo_exists') and overlay_widget.winfo_exists():
+                        overlay_widget.destroy()
+                    # Handle PySide overlays
+                    elif hasattr(overlay_widget, 'close'):
+                        overlay_widget.close()
+                        
                 except Exception as e_dow:
-                    log_debug(f"Error destroying source overlay: {e_dow}")
-        self.source_overlays.clear()
-
-        for overlay in self.target_overlays.values():
-            if overlay:
-                try:
-                    if hasattr(overlay, 'winfo_exists') and overlay.winfo_exists():
-                        overlay.destroy()
-                    elif hasattr(overlay, 'close'):
-                        overlay.close()
-                except Exception as e_dow:
-                    log_debug(f"Error destroying target overlay: {e_dow}")
-        self.target_overlays.clear()
-
-        if self.target_overlay:
-            try:
-                from overlay_manager import _preserve_overlay_position
-                _preserve_overlay_position(self)
-                log_debug("Preserved target overlay position during app shutdown")
-
-                if hasattr(self.target_overlay, 'winfo_exists') and self.target_overlay.winfo_exists():
-                    self.target_overlay.destroy()
-                elif hasattr(self.target_overlay, 'close'):
-                    self.target_overlay.close()
-            except Exception as e_dow:
-                log_debug(f"Error destroying target_overlay: {e_dow}")
-
-        self.target_overlay = None
+                    log_debug(f"Error destroying {overlay_attr_name}: {e_dow}")
+            setattr(self, overlay_attr_name, None)
         self.translation_text = None
-        self.translation_texts.clear()
 
         log_debug("Destroying root window...")
         try:
@@ -3502,186 +3155,3 @@ For more information, see the user manual."""
         except Exception as e_drw:
              log_debug(f"Error destroying root window: {e_drw}")
         log_debug("Application shutdown sequence complete.")
-
-    def copy_translation_to_clipboard(self, hwnd=None):
-        """Copy the current translation text to the clipboard."""
-        try:
-            import pyperclip
-            text_widget = self.translation_texts.get(hwnd) if hwnd is not None else self.translation_text
-            current_text = ""
-            if text_widget:
-                if isinstance(text_widget, tk.Text):
-                    current_text = text_widget.get("1.0", tk.END).strip()
-                elif hasattr(text_widget, 'toPlainText'): # PySide
-                    current_text = text_widget.toPlainText().strip()
-
-            if current_text:
-                pyperclip.copy(current_text)
-                log_debug(f"Copied to clipboard: '{current_text}'")
-            else:
-                log_debug("No text to copy to clipboard.")
-        except ImportError:
-            log_debug("pyperclip library not found. Cannot copy to clipboard.")
-            messagebox.showerror("Error", "Pyperclip library not found. Please install it to use this feature.")
-        except Exception as e:
-            log_debug(f"Error copying to clipboard: {e}")
-
-    def read_translation_aloud(self, hwnd=None):
-        """Read the current translation text aloud using a TTS engine."""
-        try:
-            import pyttsx3
-            text_widget = self.translation_texts.get(hwnd) if hwnd is not None else self.translation_text
-            current_text = ""
-            if text_widget:
-                if isinstance(text_widget, tk.Text):
-                    current_text = text_widget.get("1.0", tk.END).strip()
-                elif hasattr(text_widget, 'toPlainText'): # PySide
-                    current_text = text_widget.toPlainText().strip()
-
-            if current_text:
-                log_debug(f"Reading aloud: '{current_text}'")
-                engine = pyttsx3.init()
-                engine.say(current_text)
-                engine.runAndWait()
-            else:
-                log_debug("No text to read aloud.")
-        except ImportError:
-            log_debug("pyttsx3 library not found. Cannot read aloud.")
-            messagebox.showerror("Error", "pyttsx3 library not found. Please install it to use this feature.")
-        except Exception as e:
-            log_debug(f"Error reading text aloud: {e}")
-
-    def setup_mouse_listener(self):
-        """Initializes and starts the pynput mouse listener."""
-        try:
-            self.mouse_listener = mouse.Listener(on_move=self.on_mouse_move)
-            self.mouse_listener.start()
-            log_debug("Mouse listener started for hover translation.")
-        except Exception as e:
-            log_debug(f"Failed to start mouse listener: {e}")
-
-    def on_mouse_move(self, x, y):
-        """Callback function for when the mouse moves."""
-        self.last_mouse_pos = (x, y)
-        # Schedule a check if one isn't already pending
-        if self.hover_check_timer is None:
-            self.hover_check_timer = self.root.after(100, self.check_hover)
-
-    def check_hover(self):
-        """Periodically checks if the mouse is hovering over a source overlay."""
-        # Clear the timer ID so a new one can be scheduled by on_mouse_move
-        self.hover_check_timer = None
-
-        # Condition checks to proceed
-        if not self.enable_hover_translation_var.get() or self.is_running:
-            if self.hovered_hwnd is not None:
-                log_debug(f"Hover tracking disabled. Main translation running: {self.is_running}")
-                self.hovered_hwnd = None
-                self.hover_start_time = None
-            return
-
-        current_pos = self.last_mouse_pos
-        if not current_pos:
-            return
-
-        found_hover_target = None
-        for hwnd, overlay in self.source_overlays.items():
-            if overlay.winfo_exists():
-                try:
-                    x1, y1, x2, y2 = overlay.get_geometry()
-                    if x1 <= current_pos[0] <= x2 and y1 <= current_pos[1] <= y2:
-                        found_hover_target = hwnd
-                        break
-                except Exception:
-                    # Overlay might be destroyed during check
-                    continue
-
-        # Process hover state changes
-        if found_hover_target:
-            if self.hovered_hwnd != found_hover_target:
-                # Started hovering on a new window
-                log_debug(f"Hover started on hwnd {found_hover_target}")
-                self.hovered_hwnd = found_hover_target
-                self.hover_start_time = time.monotonic()
-            else:
-                # Still hovering on the same window, check for trigger
-                delay_ms = self.hover_delay_var.get()
-                if (time.monotonic() - self.hover_start_time) * 1000 >= delay_ms:
-                    log_debug(f"Hover triggered for hwnd {self.hovered_hwnd} after {delay_ms}ms")
-                    self.trigger_single_translation(self.hovered_hwnd)
-                    # Reset after triggering to prevent immediate re-trigger
-                    self.hovered_hwnd = None
-                    self.hover_start_time = None
-        else:
-            # Not hovering over any window
-            if self.hovered_hwnd is not None:
-                log_debug(f"Hover ended on hwnd {self.hovered_hwnd}")
-                self.hovered_hwnd = None
-                self.hover_start_time = None
-
-        # Reschedule the check to keep the loop running
-        if self.enable_hover_translation_var.get() and not self.is_running:
-            self.hover_check_timer = self.root.after(100, self.check_hover)
-
-    def trigger_single_translation(self, hwnd):
-        """Performs a one-time capture, OCR, and translation for a specific window."""
-        if hwnd not in self.source_overlays:
-            return
-        overlay = self.source_overlays[hwnd]
-        if not overlay.winfo_exists():
-            return
-
-        try:
-            import pyautogui
-            x1, y1, x2, y2 = overlay.get_geometry()
-            width, height = x2 - x1, y2 - y1
-            if width <= 0 or height <= 0:
-                return
-
-            screenshot = pyautogui.screenshot(region=(x1, y1, width, height))
-
-            item_data = {'hwnd': hwnd, 'timestamp': time.monotonic(), 'image': screenshot}
-
-            ocr_text = self.translation_handler.perform_ocr(screenshot, item_data)
-
-            if not ocr_text or self.is_placeholder_text(ocr_text):
-                log_debug(f"Hover OCR for hwnd {hwnd} resulted in no significant text.")
-                return
-
-            log_debug(f"Hover OCR result for hwnd {hwnd}: '{ocr_text}'")
-            # This needs to be a blocking call for hover mode.
-            translated_text = self.translation_handler.translate_text(ocr_text, is_hover=True)
-
-            target_overlay = self.target_overlays.get(hwnd)
-            if target_overlay and not target_overlay.winfo_viewable():
-                target_overlay.show()
-
-            self.update_translation_text(translated_text, hwnd=hwnd)
-            log_debug(f"Hover translation displayed for hwnd {hwnd}.")
-
-        except Exception as e:
-            log_debug(f"Error during single hover translation for hwnd {hwnd}: {e}")
-            traceback.print_exc()
-
-    def on_language_change(self, *args):
-        """Callback for when the GUI language is changed."""
-        try:
-            selected_language_name = self.gui_language_var.get()
-            lang_code = self.ui_lang.get_language_code_from_name(selected_language_name)
-
-            if lang_code and lang_code != self.ui_lang.current_lang:
-                log_debug(f"Language change requested to: {selected_language_name} ({lang_code})")
-
-                # Load the new language
-                self.ui_lang.load_language(lang_code)
-
-                # Update the entire UI
-                self.update_ui_language()
-
-                # Save settings after successful language change
-                if self._fully_initialized:
-                    self.save_settings()
-            elif not lang_code:
-                log_debug(f"Could not find language code for: {selected_language_name}")
-        except Exception as e:
-            log_debug(f"Error during language change: {e}")

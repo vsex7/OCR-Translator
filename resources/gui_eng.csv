@@ -267,3 +267,25 @@ stats_text_trans_header_openai,🔄 OpenAI Translation Statistics
 stats_text_combined_header_openai,💰 Combined OpenAI Statistics
 stats_text_deepl_header,📈 DeepL Usage Monitor
 stats_report_generated,Report generated:
+error_pywin32_title,PyWin32 Error
+error_pywin32_message,PyWin32 library is not available. This feature works only on Windows.
+error_toggle_click_through_title,Click-through Error
+error_toggle_click_through_message,An error occurred while toggling click-through: {e}
+error_clear_cache_title,Cache Error
+error_clear_cache_message,Failed to clear cache: {e_cc}
+error_start_title,Start Error
+error_source_overlay_missing,Source area overlay missing. Select source area.
+error_target_overlay_missing,Target area overlay missing. Select target area.
+error_target_text_missing,Target text display widget missing. Reselect target area.
+error_tesseract_path_invalid,Tesseract path invalid:
+{tesseract_exe_path}
+Check Settings.
+error_overlay_geometry,Could not get overlay geometry: {e_gog}
+error_area_validation_title,Area Validation Error
+error_invalid_area_data,Invalid {area_type_str} area data: {area_coordinates}.
+error_invalid_coordinates,Invalid coordinates in {area_type_str} area: {area_coordinates}. Error: {e_vac}
+error_pywin32_psutil_missing,PyWin32 or psutil not installed. Please install it to use this feature.
+warning_too_many_windows_title,Too Many Windows
+warning_too_many_windows_message,Please select up to 5 windows.
+error_pyperclip_missing,Pyperclip library not found. Please install it to use this feature.
+error_pyttsx3_missing,pyttsx3 library not found. Please install it to use this feature.

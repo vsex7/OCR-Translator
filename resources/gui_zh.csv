@@ -267,3 +267,25 @@ stats_text_trans_header_openai,🔄 OpenAI 翻译统计
 stats_text_combined_header_openai,💰 OpenAI 综合统计
 stats_text_deepl_header,📈 DeepL 使用情况监控
 stats_report_generated,报告生成时间:
+error_pywin32_title,PyWin32 错误
+error_pywin32_message,PyWin32 库不可用。此功能仅在 Windows 上有效。
+error_toggle_click_through_title,点击穿透错误
+error_toggle_click_through_message,切换点击穿透时发生错误: {e}
+error_clear_cache_title,缓存错误
+error_clear_cache_message,清除缓存失败: {e_cc}
+error_start_title,启动错误
+error_source_overlay_missing,源区域叠加层丢失。请选择源区域。
+error_target_overlay_missing,目标区域叠加层丢失。请选择目标区域。
+error_target_text_missing,目标文本显示小部件丢失。请重新选择目标区域。
+error_tesseract_path_invalid,Tesseract 路径无效:
+{tesseract_exe_path}
+请检查设置。
+error_overlay_geometry,无法获取叠加层几何图形: {e_gog}
+error_area_validation_title,区域验证错误
+error_invalid_area_data,无效的 {area_type_str} 区域数据: {area_coordinates}。
+error_invalid_coordinates,在 {area_type_str} 区域中的坐标无效: {area_coordinates}。错误: {e_vac}
+error_pywin32_psutil_missing,未安装 PyWin32 或 psutil。请安装它以使用此功能。
+warning_too_many_windows_title,窗口过多
+warning_too_many_windows_message,请最多选择 5 个窗口。
+error_pyperclip_missing,未找到 Pyperclip 库。请安装它以使用此功能。
+error_pyttsx3_missing,未找到 pyttsx3 库。请安装它以使用此功能。
